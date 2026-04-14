@@ -15,6 +15,7 @@ interface SubjectPageProps {
 }
 
 const tabs = [
+  { id: 'all', label: 'All Resources' },
   { id: 'notes', label: 'Notes' },
   { id: 'pyq', label: 'PYQs' },
   { id: 'solved-answer', label: 'Solved Answers' },
@@ -24,6 +25,10 @@ const tabs = [
 type TabId = (typeof tabs)[number]['id'];
 
 function getTabHeading(tab: TabId): string {
+  if (tab === 'all') {
+    return 'All study resources';
+  }
+
   if (tab === 'pyq') {
     return 'Previous year questions';
   }
@@ -40,6 +45,10 @@ function getTabHeading(tab: TabId): string {
 }
 
 function getTabDescription(tab: TabId): string {
+  if (tab === 'all') {
+    return 'Browse every uploaded note, PDF, PYQ, and solved answer for this subject in one place.';
+  }
+
   if (tab === 'pyq') {
     return 'Browse previous year questions and exam patterns linked to the subject modules.';
   }
@@ -170,7 +179,7 @@ export default function SubjectPage({ params }: SubjectPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [resourcesError, setResourcesError] = useState<string | null>(null);
   const [usingFallbackData, setUsingFallbackData] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabId>('notes');
+  const [activeTab, setActiveTab] = useState<TabId>('all');
   const [selectedModuleId, setSelectedModuleId] = useState<string>('all');
   const [resourceSearchQuery, setResourceSearchQuery] = useState('');
   const [previewDocument, setPreviewDocument] = useState<Document | null>(null);
@@ -236,6 +245,7 @@ export default function SubjectPage({ params }: SubjectPageProps) {
     setSelectedModuleId('all');
     setResourceSearchQuery('');
     setShowBookmarkedOnly(false);
+    setActiveTab('all');
   }, [subjectId]);
 
   useEffect(() => {
@@ -359,7 +369,7 @@ export default function SubjectPage({ params }: SubjectPageProps) {
   }
 
   const filteredDocuments = documents.filter((document) => {
-    if (document.type !== activeTab) {
+    if (activeTab !== 'all' && document.type !== activeTab) {
       return false;
     }
 
@@ -404,7 +414,10 @@ export default function SubjectPage({ params }: SubjectPageProps) {
   const activeTabLabel = tabs.find((tab) => tab.id === activeTab)?.label ?? 'Resources';
 
   const documentCounts = tabs.reduce<Record<TabId, number>>((counts, tab) => {
-    counts[tab.id] = documents.filter((document) => document.type === tab.id).length;
+    counts[tab.id] =
+      tab.id === 'all'
+        ? documents.length
+        : documents.filter((document) => document.type === tab.id).length;
     return counts;
   }, {} as Record<TabId, number>);
 
