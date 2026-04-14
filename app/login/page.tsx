@@ -94,14 +94,6 @@ export default function LoginPage() {
             : 'Use the demo accounts below. Students and admins share the same sign-in form in both demo mode and Supabase mode.'}
         </p>
 
-        <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-300">
-          Admin access is not a separate login. Sign in here with an account whose role is set to
-          <span className="font-semibold text-white"> admin </span>
-          in the
-          <span className="font-semibold text-white"> profiles </span>
-          table.
-        </div>
-
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">
           {error ? (
             <div className="rounded-lg border border-red-800 bg-red-950/50 p-3 text-sm text-red-300">

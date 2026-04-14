@@ -75,16 +75,6 @@ export default function SignupPage() {
             : 'Create a demo student account instantly and start exploring the app.'}
         </p>
 
-        {supabaseAuthEnabled ? (
-          <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-300">
-            Need admin access later? Create the account here first, then change its role to
-            <span className="font-semibold text-white"> admin </span>
-            in Supabase. The same
-            <span className="font-semibold text-white"> /login </span>
-            page works for both students and admins.
-          </div>
-        ) : null}
-
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">
           {error ? (
             <div className="rounded-lg border border-red-800 bg-red-950/50 p-3 text-sm text-red-300">
