@@ -90,7 +90,7 @@ export default function LoginPage() {
         <h1 className="mt-4 text-3xl font-semibold text-white">Log in to VTU SmartPrep</h1>
         <p className="mt-3 text-slate-400">
           {supabaseAuthEnabled
-            ? 'Students and admins use the same sign-in form. After login, you will be redirected based on your account role.'
+            ? 'Sign in to access your study dashboard, resources, and saved materials.'
             : 'Use the demo accounts below. Students and admins share the same sign-in form in both demo mode and Supabase mode.'}
         </p>
 
