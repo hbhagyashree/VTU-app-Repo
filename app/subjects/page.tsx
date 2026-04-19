@@ -2,16 +2,19 @@
 
 import AppShell from '@/components/layout/AppShell';
 import SubjectCard from '@/components/student/SubjectCard';
-import { getAllSemesters } from '@/lib/academics';
+import { getAllSemesters, getDepartments } from '@/lib/academics';
 import { getProtectedRouteState } from '@/lib/auth';
+import { groupSubjectsByAcademicOrder } from '@/lib/subjectOrdering';
 import { getPublishedSubjectsResult } from '@/lib/subjects';
-import type { Subject } from '@/types';
+import type { Department, Semester, Subject } from '@/types';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 export default function SubjectsPage() {
   const router = useRouter();
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [semesters, setSemesters] = useState<Semester[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [semesterMap, setSemesterMap] = useState<Record<string, string>>({});
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
@@ -35,13 +38,16 @@ export default function SubjectsPage() {
       setError(null);
 
       try {
-        const [subjectsData, semestersResult] = await Promise.all([
+        const [subjectsData, departmentsResult, semestersResult] = await Promise.all([
           getPublishedSubjectsResult(),
+          getDepartments(),
           getAllSemesters(),
         ]);
         if (!isActive) return;
         setSubjects(subjectsData.data);
-        setUsingFallbackData(subjectsData.fallback || semestersResult.fallback);
+        setDepartments(departmentsResult.data);
+        setSemesters(semestersResult.data);
+        setUsingFallbackData(subjectsData.fallback || departmentsResult.fallback || semestersResult.fallback);
         const map: Record<string, string> = {};
         for (const sem of semestersResult.data) {
           map[sem.id] = sem.title;
@@ -71,6 +77,7 @@ export default function SubjectsPage() {
       .filter(Boolean)
       .some((value) => value?.toLowerCase().includes(normalizedQuery));
   });
+  const subjectGroups = groupSubjectsByAcademicOrder(filteredSubjects, { departments, semesters });
 
   return (
     <AppShell>
@@ -114,7 +121,7 @@ export default function SubjectsPage() {
           </label>
         </div>
 
-        <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <section className="grid gap-6">
           {isLoading ? (
             <div className="col-span-full flex items-center justify-center py-16">
               <div className="text-slate-400">Loading subjects...</div>
@@ -128,12 +135,19 @@ export default function SubjectsPage() {
               <div className="text-slate-400">No subjects match your search yet.</div>
             </div>
           ) : (
-            filteredSubjects.map((subject) => (
-              <SubjectCard
-                key={subject.id}
-                subject={subject}
-                semesterTitle={semesterMap[subject.semester_id]}
-              />
+            subjectGroups.map((group) => (
+              <div key={group.id} className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5">
+                <h2 className="text-lg font-semibold text-white">{group.title}</h2>
+                <div className="mt-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {group.subjects.map((subject) => (
+                    <SubjectCard
+                      key={subject.id}
+                      subject={subject}
+                      semesterTitle={semesterMap[subject.semester_id]}
+                    />
+                  ))}
+                </div>
+              </div>
             ))
           )}
         </section>

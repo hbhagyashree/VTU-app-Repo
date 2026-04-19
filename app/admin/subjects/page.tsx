@@ -2,18 +2,16 @@
 
 import SubjectForm from '@/components/admin/SubjectForm';
 import AdminShell from '@/components/layout/AdminShell';
+import { getAllSemesters, getDepartments } from '@/lib/academics';
 import { getProtectedRouteState } from '@/lib/auth';
 import { getBookmarkAnalytics } from '@/lib/bookmarks';
+import { compareSubjectsByAcademicOrder } from '@/lib/subjectOrdering';
 import { deleteSubject, getSubjectsResult, updateSubject } from '@/lib/subjects';
-import type { BookmarkAnalytics, Subject, UpdateSubjectInput } from '@/types';
+import type { BookmarkAnalytics, Department, Semester, Subject, UpdateSubjectInput } from '@/types';
 import { Pencil, Trash2, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-
-function sortSubjects(items: Subject[]): Subject[] {
-  return [...items].sort((left, right) => left.name.localeCompare(right.name));
-}
 
 interface EditFormState {
   name: string;
@@ -25,6 +23,8 @@ interface EditFormState {
 export default function AdminSubjectsPage() {
   const router = useRouter();
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [semesters, setSemesters] = useState<Semester[]>([]);
   const [isCheckingAccess, setIsCheckingAccess] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -55,13 +55,17 @@ export default function AdminSubjectsPage() {
       setIsLoading(true);
       setLoadError(null);
       try {
-        const [result, analytics] = await Promise.all([
+        const [result, departmentsResult, semestersResult, analytics] = await Promise.all([
           getSubjectsResult(),
+          getDepartments(),
+          getAllSemesters(),
           getBookmarkAnalytics(),
         ]);
         if (!isActive) return;
-        setSubjects(sortSubjects(result.data));
-        setUsingFallbackData(result.fallback);
+        setSubjects(result.data);
+        setDepartments(departmentsResult.data);
+        setSemesters(semestersResult.data);
+        setUsingFallbackData(result.fallback || departmentsResult.fallback || semestersResult.fallback);
         setBookmarkAnalytics(analytics);
         setAnalyticsError(null);
       } catch {
@@ -78,7 +82,7 @@ export default function AdminSubjectsPage() {
   }, [router]);
 
   const handleSubjectCreated = (newSubject: Subject) => {
-    setSubjects((previous) => sortSubjects([...previous, newSubject]));
+    setSubjects((previous) => [...previous, newSubject]);
     setShowForm(false);
   };
 
@@ -110,7 +114,7 @@ export default function AdminSubjectsPage() {
         published: editForm.published,
       };
       const updated = await updateSubject(subjectId, updates);
-      setSubjects((prev) => sortSubjects(prev.map((s) => (s.id === subjectId ? updated : s))));
+      setSubjects((prev) => prev.map((s) => (s.id === subjectId ? updated : s)));
       setEditingId(null);
     } catch (err) {
       setEditError(err instanceof Error ? err.message : 'Failed to save changes');
@@ -136,23 +140,27 @@ export default function AdminSubjectsPage() {
   const lowEngagementSubjectIds = new Set(
     (bookmarkAnalytics?.lowEngagementSubjects ?? []).map((item) => item.subject_id)
   );
+  const semesterById = new Map(semesters.map((semester) => [semester.id, semester]));
+  const departmentById = new Map(departments.map((department) => [department.id, department]));
+  const compareByAcademicOrder = (left: Subject, right: Subject) =>
+    compareSubjectsByAcademicOrder(left, right, semesterById, departmentById);
 
   const sortedSubjects = [...subjects].sort((left, right) => {
     if (subjectSortMode === 'engagement_low') {
       return (
         (subjectSaveCounts.get(left.id) ?? 0) - (subjectSaveCounts.get(right.id) ?? 0) ||
-        left.name.localeCompare(right.name)
+        compareByAcademicOrder(left, right)
       );
     }
 
     if (subjectSortMode === 'engagement_high') {
       return (
         (subjectSaveCounts.get(right.id) ?? 0) - (subjectSaveCounts.get(left.id) ?? 0) ||
-        left.name.localeCompare(right.name)
+        compareByAcademicOrder(left, right)
       );
     }
 
-    return left.name.localeCompare(right.name);
+    return compareByAcademicOrder(left, right);
   });
 
   if (isCheckingAccess) {
@@ -241,7 +249,7 @@ export default function AdminSubjectsPage() {
                 }
                 className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-brand-500"
               >
-                <option value="name">Name A-Z</option>
+                <option value="name">Department and semester</option>
                 <option value="engagement_low">Lowest engagement first</option>
                 <option value="engagement_high">Highest engagement first</option>
               </select>

@@ -3,10 +3,11 @@
 import AppShell from '@/components/layout/AppShell';
 import SubjectCard from '@/components/student/SubjectCard';
 import { getProtectedRouteState, logout } from '@/lib/auth';
-import { getAllSemesters, getSubjectResources } from '@/lib/academics';
+import { getAllSemesters, getDepartments, getSubjectResources } from '@/lib/academics';
 import { getUserBookmarks } from '@/lib/bookmarks';
+import { groupSubjectsByAcademicOrder } from '@/lib/subjectOrdering';
 import { getPublishedSubjectsResult } from '@/lib/subjects';
-import type { AuthUser, Bookmark, Document, Subject } from '@/types';
+import type { AuthUser, Bookmark, Department, Document, Semester, Subject } from '@/types';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -22,6 +23,8 @@ export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [semesters, setSemesters] = useState<Semester[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [semesterMap, setSemesterMap] = useState<Record<string, string>>({});
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
@@ -58,13 +61,16 @@ export default function DashboardPage() {
       setSubjectsError(null);
 
       try {
-        const [subjectsData, semestersResult] = await Promise.all([
+        const [subjectsData, departmentsResult, semestersResult] = await Promise.all([
           getPublishedSubjectsResult(),
+          getDepartments(),
           getAllSemesters(),
         ]);
         if (!isActive) return;
         setSubjects(subjectsData.data);
-        setUsingFallbackData(subjectsData.fallback || semestersResult.fallback);
+        setDepartments(departmentsResult.data);
+        setSemesters(semestersResult.data);
+        setUsingFallbackData(subjectsData.fallback || departmentsResult.fallback || semestersResult.fallback);
         const map: Record<string, string> = {};
         for (const sem of semestersResult.data) {
           map[sem.id] = sem.title;
@@ -194,6 +200,7 @@ export default function DashboardPage() {
       .filter(Boolean)
       .some((value) => value?.toLowerCase().includes(normalizedQuery));
   });
+  const subjectGroups = groupSubjectsByAcademicOrder(filteredSubjects, { departments, semesters });
 
   if (isCheckingAuth) {
     return (
@@ -321,7 +328,7 @@ export default function DashboardPage() {
           )}
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-3">
+        <section className="grid gap-6">
           {subjectsLoading ? (
             <div className="col-span-full flex items-center justify-center py-16">
               <div className="text-slate-400">Loading subjects...</div>
@@ -335,12 +342,19 @@ export default function DashboardPage() {
               <div className="text-slate-400">No subjects match your search yet.</div>
             </div>
           ) : (
-            filteredSubjects.map((subject) => (
-              <SubjectCard
-                key={subject.id}
-                subject={subject}
-                semesterTitle={semesterMap[subject.semester_id]}
-              />
+            subjectGroups.map((group) => (
+              <div key={group.id} className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5">
+                <h2 className="text-lg font-semibold text-white">{group.title}</h2>
+                <div className="mt-4 grid gap-6 lg:grid-cols-3">
+                  {group.subjects.map((subject) => (
+                    <SubjectCard
+                      key={subject.id}
+                      subject={subject}
+                      semesterTitle={semesterMap[subject.semester_id]}
+                    />
+                  ))}
+                </div>
+              </div>
             ))
           )}
         </section>

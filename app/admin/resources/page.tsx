@@ -8,6 +8,8 @@ import {
 } from '@/lib/adminActivity';
 import { getProtectedRouteState } from '@/lib/auth';
 import {
+  getAllSemesters,
+  getDepartments,
   createDocument,
   createModule,
   deleteDocument,
@@ -23,13 +25,16 @@ import {
   isStorageUploadConfigured,
   uploadResourceFile,
 } from '@/lib/storage';
+import { groupSubjectsByAcademicOrder } from '@/lib/subjectOrdering';
 import { getSubjectsResult, updateSubject } from '@/lib/subjects';
 import type {
   AdminActivityLog,
   CreateDocumentInput,
   CreateModuleInput,
+  Department,
   Document,
   Module,
+  Semester,
   Subject,
   SubjectDocumentType,
   UpdateDocumentInput,
@@ -257,6 +262,8 @@ export default function AdminResourcesPage() {
   const router = useRouter();
   const [isCheckingAccess, setIsCheckingAccess] = useState(true);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [semesters, setSemesters] = useState<Semester[]>([]);
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
   const [modules, setModules] = useState<Module[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -351,11 +358,17 @@ export default function AdminResourcesPage() {
 
       setIsLoadingSubjects(true);
       try {
-        const result = await getSubjectsResult();
+        const [result, departmentsResult, semestersResult] = await Promise.all([
+          getSubjectsResult(),
+          getDepartments(),
+          getAllSemesters(),
+        ]);
         if (isActive) {
           setSubjects(result.data);
+          setDepartments(departmentsResult.data);
+          setSemesters(semestersResult.data);
           setSubjectLoadNotice(
-            result.fallback
+            result.fallback || departmentsResult.fallback || semestersResult.fallback
               ? 'Using fallback subject data because the live Supabase content is unavailable right now.'
               : null
           );
@@ -505,6 +518,7 @@ export default function AdminResourcesPage() {
   };
 
   const selectedSubject = subjects.find((subject) => subject.id === selectedSubjectId) ?? null;
+  const subjectOptionGroups = groupSubjectsByAcademicOrder(subjects, { departments, semesters });
 
   const handlePublishSelectedSubject = async () => {
     if (!selectedSubject) {
@@ -1587,10 +1601,14 @@ export default function AdminResourcesPage() {
               <option value="">
                 {isLoadingSubjects ? 'Loading subjects...' : '— Choose a subject —'}
               </option>
-              {subjects.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} {s.code ? `(${s.code})` : ''} {s.published ? '' : '— Draft'}
-                </option>
+              {subjectOptionGroups.map((group) => (
+                <optgroup key={group.id} label={group.title}>
+                  {group.subjects.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.code ? `${s.code} - ` : ''}{s.name} {s.published ? '' : '- Draft'}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </label>
