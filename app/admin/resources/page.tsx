@@ -207,6 +207,51 @@ interface BulkUndoItem {
   }>;
 }
 
+interface PyqImportRow {
+  title: string;
+  file_url: string;
+  content?: string;
+}
+
+function splitPyqImportLine(line: string): string[] {
+  if (line.includes('|')) {
+    return line.split('|').map((part) => part.trim());
+  }
+
+  return line.split(',').map((part) => part.trim());
+}
+
+function parsePyqImportRows(input: string): PyqImportRow[] {
+  return input
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => !/^title\s*[,|]\s*url/i.test(line))
+    .map((line, index) => {
+      const [title, fileUrl, ...summaryParts] = splitPyqImportLine(line);
+      const content = summaryParts.join(' ').trim();
+
+      if (!title || !fileUrl) {
+        throw new Error(`Line ${index + 1}: use Title | URL | Summary.`);
+      }
+
+      try {
+        const parsedUrl = new URL(fileUrl);
+        if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+          throw new Error('Only web links are allowed.');
+        }
+      } catch {
+        throw new Error(`Line ${index + 1}: "${fileUrl}" is not a valid URL.`);
+      }
+
+      return {
+        title,
+        file_url: fileUrl,
+        content: content || undefined,
+      };
+    });
+}
+
 export default function AdminResourcesPage() {
   const storageUploadsEnabled = isStorageUploadConfigured();
   const router = useRouter();
@@ -261,6 +306,11 @@ export default function AdminResourcesPage() {
   const [isSubmittingDoc, setIsSubmittingDoc] = useState(false);
   const [isUploadingDocFile, setIsUploadingDocFile] = useState(false);
   const [docUploadFile, setDocUploadFile] = useState<File | null>(null);
+  const [showPyqImportForm, setShowPyqImportForm] = useState(false);
+  const [pyqImportText, setPyqImportText] = useState('');
+  const [pyqImportModuleId, setPyqImportModuleId] = useState('');
+  const [pyqImportError, setPyqImportError] = useState<string | null>(null);
+  const [isImportingPyqs, setIsImportingPyqs] = useState(false);
   const [documentSearchQuery, setDocumentSearchQuery] = useState('');
   const [documentTypeFilter, setDocumentTypeFilter] = useState<'all' | SubjectDocumentType>('all');
   const [documentSortOrder, setDocumentSortOrder] = useState<'updated_desc' | 'updated_asc' | 'title_asc' | 'bookmarks_desc'>('updated_desc');
@@ -329,6 +379,10 @@ export default function AdminResourcesPage() {
       setRecentChangeSearchQuery('');
       setSelectedRecentChange(null);
       setExpandedRecentChangeGroups([]);
+      setShowPyqImportForm(false);
+      setPyqImportText('');
+      setPyqImportModuleId('');
+      setPyqImportError(null);
       return;
     }
 
@@ -360,6 +414,10 @@ export default function AdminResourcesPage() {
         setBulkSummaryText('');
         setBulkSummaryTemplate('');
         setLastBulkUndo(null);
+        setShowPyqImportForm(false);
+        setPyqImportText('');
+        setPyqImportModuleId(mods[0]?.id ?? '');
+        setPyqImportError(null);
         const activityResult = await getAdminActivityLog(selectedSubjectId);
         if (!isActive) return;
         setRecentChanges(
@@ -569,6 +627,75 @@ export default function AdminResourcesPage() {
     } finally {
       setIsUploadingDocFile(false);
       setIsSubmittingDoc(false);
+    }
+  };
+
+  const handleImportPyqs = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!selectedSubjectId || !pyqImportModuleId) {
+      setPyqImportError('Select a subject and module before importing PYQs.');
+      return;
+    }
+
+    let rows: PyqImportRow[];
+    try {
+      rows = parsePyqImportRows(pyqImportText);
+    } catch (error) {
+      setPyqImportError(error instanceof Error ? error.message : 'Check the PYQ import format.');
+      return;
+    }
+
+    if (rows.length === 0) {
+      setPyqImportError('Paste at least one PYQ row before importing.');
+      return;
+    }
+
+    setIsImportingPyqs(true);
+    setPyqImportError(null);
+    setSuccessMessage(null);
+
+    try {
+      const createdDocuments = await Promise.all(
+        rows.map(async (row) => {
+          const { data } = await createDocument({
+            subject_id: selectedSubjectId,
+            module_id: pyqImportModuleId,
+            type: 'pyq',
+            title: row.title,
+            content:
+              row.content ??
+              'Previous-year question paper added for exam practice and module-wise revision.',
+            file_url: row.file_url,
+            metadata: {
+              import_source: 'admin_bulk_pyq_import',
+              imported_at: new Date().toISOString(),
+            },
+          });
+
+          return data;
+        })
+      );
+
+      setDocuments((prev) => [...prev, ...createdDocuments]);
+      setPyqImportText('');
+      setShowPyqImportForm(false);
+      setDocumentTypeFilter('pyq');
+      setSuccessMessage(`${createdDocuments.length} PYQ resource(s) imported successfully.`);
+      void addRecentChange(
+        'Bulk PYQ import',
+        `${createdDocuments.length} PYQ resource(s) imported`,
+        {
+          document_ids: createdDocuments.map((document) => document.id),
+          affected_count: createdDocuments.length,
+          module_id: pyqImportModuleId,
+          module_title: getModuleTitle(pyqImportModuleId),
+        }
+      );
+    } catch (error) {
+      setPyqImportError(error instanceof Error ? error.message : 'Failed to import PYQ links.');
+    } finally {
+      setIsImportingPyqs(false);
     }
   };
 
@@ -1690,7 +1817,7 @@ export default function AdminResourcesPage() {
 
                 {/* Documents section */}
                 <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-8">
-                  <div className="mb-6 flex items-center justify-between">
+                  <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div className="flex items-center gap-3">
                       <FileText className="h-5 w-5 text-brand-400" />
                       <h2 className="text-xl font-semibold text-white">Documents</h2>
@@ -1698,16 +1825,35 @@ export default function AdminResourcesPage() {
                         {documents.length}
                       </span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowDocForm((v) => !v)}
-                      disabled={modules.length === 0}
-                      className="flex items-center gap-1.5 rounded-full bg-brand-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-400 disabled:cursor-not-allowed disabled:opacity-50"
-                      title={modules.length === 0 ? 'Add a module first' : undefined}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Add Document
-                    </button>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowPyqImportForm((value) => !value);
+                          setShowDocForm(false);
+                          setPyqImportError(null);
+                          setPyqImportModuleId((value) => value || modules[0]?.id || '');
+                        }}
+                        disabled={modules.length === 0}
+                        className="flex items-center justify-center gap-1.5 rounded-full border border-amber-700 bg-amber-950/50 px-4 py-2 text-sm font-semibold text-amber-100 transition hover:bg-amber-900/60 disabled:cursor-not-allowed disabled:opacity-50"
+                        title={modules.length === 0 ? 'Add a module first' : undefined}
+                      >
+                        Import PYQ Links
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowDocForm((v) => !v);
+                          setShowPyqImportForm(false);
+                        }}
+                        disabled={modules.length === 0}
+                        className="flex items-center justify-center gap-1.5 rounded-full bg-brand-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-400 disabled:cursor-not-allowed disabled:opacity-50"
+                        title={modules.length === 0 ? 'Add a module first' : undefined}
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add Document
+                      </button>
+                    </div>
                   </div>
 
                   {documents.length > 0 ? (
@@ -1843,6 +1989,69 @@ export default function AdminResourcesPage() {
                       </div>
                     </div>
                   ) : null}
+
+                  {showPyqImportForm && (
+                    <form onSubmit={handleImportPyqs} className="mb-6 space-y-4 rounded-2xl border border-amber-800 bg-amber-950/20 p-5">
+                      <div>
+                        <h3 className="text-sm font-semibold text-white">Bulk import PYQ links</h3>
+                        <p className="mt-1 text-sm text-amber-100/80">
+                          Paste only official, public, or permission-approved PYQ links. The app will save each row as a PYQ resource for the selected module.
+                        </p>
+                      </div>
+                      {pyqImportError && (
+                        <div className="rounded-lg border border-red-800 bg-red-950/50 p-3 text-sm text-red-300">
+                          {pyqImportError}
+                        </div>
+                      )}
+                      <label className="block">
+                        <span className="text-xs text-slate-400">Module *</span>
+                        <select
+                          value={pyqImportModuleId}
+                          onChange={(e) => setPyqImportModuleId(e.target.value)}
+                          required
+                          className="mt-1.5 w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2.5 text-sm text-slate-100 outline-none transition focus:border-amber-500"
+                        >
+                          <option value="">Select module</option>
+                          {modules.map((m) => (
+                            <option key={m.id} value={m.id}>{m.title}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="text-xs text-slate-400">PYQ rows *</span>
+                        <textarea
+                          value={pyqImportText}
+                          onChange={(e) => setPyqImportText(e.target.value)}
+                          rows={7}
+                          required
+                          placeholder={'ADA 2023 Dec PYQ | https://example.com/ada-2023-dec.pdf | Module 1 previous-year question paper for algorithm analysis practice.\nOperating Systems 2022 Jan PYQ | https://example.com/os-2022-jan.pdf | Exam paper useful for process scheduling and memory management revision.'}
+                          className="mt-1.5 w-full resize-y rounded-xl border border-slate-800 bg-slate-950 px-4 py-2.5 text-sm text-slate-100 outline-none transition focus:border-amber-500"
+                        />
+                        <p className="mt-2 text-xs text-slate-400">
+                          Format: <span className="text-slate-200">Title | URL | Summary</span>. One PYQ per line. Comma-separated rows also work.
+                        </p>
+                      </label>
+                      <div className="flex flex-col gap-3 sm:flex-row">
+                        <button
+                          type="submit"
+                          disabled={isImportingPyqs}
+                          className="rounded-full bg-amber-500 px-5 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-400 disabled:opacity-50"
+                        >
+                          {isImportingPyqs ? 'Importing...' : 'Import PYQs'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowPyqImportForm(false);
+                            setPyqImportError(null);
+                          }}
+                          className="rounded-full border border-slate-700 px-5 py-2 text-sm text-slate-400 transition hover:text-white"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  )}
 
                   {showDocForm && (
                     <form onSubmit={handleCreateDocument} className="mb-6 space-y-4 rounded-2xl border border-slate-700 bg-slate-950/50 p-5">
