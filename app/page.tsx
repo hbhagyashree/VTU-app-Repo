@@ -1,7 +1,18 @@
 import AppShell from '@/components/layout/AppShell';
 
 import Link from 'next/link';
-import { ArrowRight, BookOpen, CheckCircle2, Cpu, LayoutDashboard, Sparkles } from 'lucide-react';
+import {
+  ArrowRight,
+  BookOpen,
+  Calculator,
+  CheckCircle2,
+  Cpu,
+  FileQuestion,
+  FlaskConical,
+  LayoutDashboard,
+  Search,
+  Sparkles,
+} from 'lucide-react';
 
 const features = [
   {
@@ -19,6 +30,38 @@ const features = [
     description: 'Published notes and exam materials stay organized by subject and module.',
     icon: Cpu,
   },
+];
+
+const resourceTiles = [
+  {
+    title: 'Notes Library',
+    description: 'Module-wise notes and uploaded PDFs for quick revision.',
+    icon: BookOpen,
+  },
+  {
+    title: 'PYQ Practice',
+    description: 'Previous-year questions grouped with subject context.',
+    icon: FileQuestion,
+  },
+  {
+    title: 'Lab Resources',
+    description: 'Keep lab manuals and practical references organized.',
+    icon: FlaskConical,
+  },
+  {
+    title: 'Exam Tools',
+    description: 'A focused space for calculators, saved resources, and revision flow.',
+    icon: Calculator,
+  },
+];
+
+const branchTiles = [
+  'Computer Science',
+  'Information Science',
+  'AI & Machine Learning',
+  'AI & Data Science',
+  'Electronics & Communication',
+  'Mechanical',
 ];
 
 export default function HomePage() {
@@ -71,6 +114,34 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="mt-8 grid gap-4 lg:grid-cols-[1fr_0.8fr]">
+        <div className="glass-panel rounded-[1.75rem] p-5 sm:p-6">
+          <div className="flex items-start gap-4">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-ocean-400/15 text-ocean-200">
+              <Search className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-sm uppercase tracking-[0.25em] text-ocean-300">Fast discovery</p>
+              <h2 className="mt-2 text-2xl font-bold text-white">Find the right resource by subject, module, or file name.</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                Students can search after login, open published subjects, preview notes, and save useful PDFs for later revision.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-[1.75rem] border border-white/10 bg-slate-900/70 p-5 sm:p-6">
+          <p className="text-sm uppercase tracking-[0.25em] text-brand-200">Study schemes</p>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            {['2022 Scheme', '2025 Scheme', 'Semester Notes', 'Exam PYQs'].map((item) => (
+              <div key={item} className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100">
+                {item}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="mt-16 grid gap-6 md:grid-cols-3">
         {features.map((feature) => (
           <article key={feature.title} className="group rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-xl shadow-slate-950/20 transition hover:-translate-y-1 hover:border-brand-300/40">
@@ -81,6 +152,47 @@ export default function HomePage() {
             <p className="mt-3 text-slate-300">{feature.description}</p>
           </article>
         ))}
+      </section>
+
+      <section className="mt-10 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="rounded-[1.75rem] border border-white/10 bg-slate-900/70 p-6">
+          <p className="text-sm uppercase tracking-[0.25em] text-brand-200">Resource hub</p>
+          <h2 className="mt-3 text-2xl font-bold text-white">Built around how VTU students actually search.</h2>
+          <p className="mt-3 text-slate-300">
+            This design keeps the resource-hub feel students expect, while keeping your app original, private, and cleaner for logged-in study.
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          {resourceTiles.map((tile) => (
+            <article key={tile.title} className="rounded-3xl border border-white/10 bg-slate-950/55 p-5 transition hover:border-ocean-300/40 hover:bg-slate-900/80">
+              <tile.icon className="h-6 w-6 text-ocean-300" />
+              <h3 className="mt-4 font-semibold text-white">{tile.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-400">{tile.description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-10 rounded-[1.75rem] border border-white/10 bg-slate-900/70 p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm uppercase tracking-[0.25em] text-ocean-300">Popular branches</p>
+            <h2 className="mt-3 text-2xl font-bold text-white">Organize resources by branch and semester.</h2>
+          </div>
+          <Link href="/login" className="inline-flex w-fit items-center rounded-full border border-white/15 bg-white/5 px-5 py-2 text-sm font-semibold text-slate-100 transition hover:border-brand-300/40">
+            Login to browse
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Link>
+        </div>
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {branchTiles.map((branch) => (
+            <div key={branch} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+              <p className="font-semibold text-white">{branch}</p>
+              <p className="mt-1 text-sm text-slate-400">Notes, PYQs, and module resources</p>
+            </div>
+          ))}
+        </div>
       </section>
     </AppShell>
   );
