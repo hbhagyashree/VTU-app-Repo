@@ -4,7 +4,11 @@ import AppShell from '@/components/layout/AppShell';
 import SubjectCard from '@/components/student/SubjectCard';
 import { getAllSemesters, getDepartments } from '@/lib/academics';
 import { getProtectedRouteState } from '@/lib/auth';
-import { groupSubjectsByAcademicOrder } from '@/lib/subjectOrdering';
+import {
+  filterSubjectsByDepartmentAndSemester,
+  getAvailableSemesterNumbers,
+  groupSubjectsByAcademicOrder,
+} from '@/lib/subjectOrdering';
 import { getPublishedSubjectsResult } from '@/lib/subjects';
 import type { Department, Semester, Subject } from '@/types';
 import { useRouter } from 'next/navigation';
@@ -16,6 +20,8 @@ export default function SubjectsPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [semesters, setSemesters] = useState<Semester[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
+  const [selectedSemesterNumber, setSelectedSemesterNumber] = useState('');
   const [semesterMap, setSemesterMap] = useState<Record<string, string>>({});
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,8 +72,21 @@ export default function SubjectsPage() {
     return () => { isActive = false; };
   }, [router]);
 
+  const departmentFilteredSubjects = filterSubjectsByDepartmentAndSemester(subjects, semesters, {
+    departmentId: selectedDepartmentId,
+    semesterNumber: selectedSemesterNumber,
+  });
+  const availableSemesterNumbers = getAvailableSemesterNumbers(
+    selectedDepartmentId
+      ? filterSubjectsByDepartmentAndSemester(subjects, semesters, {
+          departmentId: selectedDepartmentId,
+          semesterNumber: '',
+        })
+      : subjects,
+    semesters
+  );
   const normalizedQuery = searchQuery.trim().toLowerCase();
-  const filteredSubjects = subjects.filter((subject) => {
+  const filteredSubjects = departmentFilteredSubjects.filter((subject) => {
     if (!normalizedQuery) {
       return true;
     }
@@ -108,7 +127,42 @@ export default function SubjectsPage() {
           </div>
         ) : null}
 
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6">
+        <div className="grid gap-4 rounded-3xl border border-slate-800 bg-slate-900/90 p-6 lg:grid-cols-3">
+          <label className="block">
+            <span className="text-sm text-slate-400">Department</span>
+            <select
+              value={selectedDepartmentId}
+              onChange={(event) => {
+                setSelectedDepartmentId(event.target.value);
+                setSelectedSemesterNumber('');
+              }}
+              className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-slate-100 outline-none transition focus:border-brand-500"
+            >
+              <option value="">All departments</option>
+              {departments.map((department) => (
+                <option key={department.id} value={department.id}>
+                  {department.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="text-sm text-slate-400">Semester</span>
+            <select
+              value={selectedSemesterNumber}
+              onChange={(event) => setSelectedSemesterNumber(event.target.value)}
+              className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-slate-100 outline-none transition focus:border-brand-500"
+            >
+              <option value="">All semesters</option>
+              {availableSemesterNumbers.map((number) => (
+                <option key={number} value={number}>
+                  Semester {number}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <label className="block">
             <span className="text-sm text-slate-400">Search subjects</span>
             <input
@@ -129,6 +183,10 @@ export default function SubjectsPage() {
           ) : subjects.length === 0 ? (
             <div className="col-span-full flex items-center justify-center py-16">
               <div className="text-slate-400">No published subjects are available yet.</div>
+            </div>
+          ) : departmentFilteredSubjects.length === 0 ? (
+            <div className="col-span-full flex items-center justify-center py-16">
+              <div className="text-slate-400">No subjects match this department and semester.</div>
             </div>
           ) : filteredSubjects.length === 0 ? (
             <div className="col-span-full flex items-center justify-center py-16">

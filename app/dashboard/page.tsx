@@ -5,7 +5,11 @@ import SubjectCard from '@/components/student/SubjectCard';
 import { getProtectedRouteState, logout } from '@/lib/auth';
 import { getAllSemesters, getDepartments, getSubjectResources } from '@/lib/academics';
 import { getUserBookmarks } from '@/lib/bookmarks';
-import { groupSubjectsByAcademicOrder } from '@/lib/subjectOrdering';
+import {
+  filterSubjectsByDepartmentAndSemester,
+  getAvailableSemesterNumbers,
+  groupSubjectsByAcademicOrder,
+} from '@/lib/subjectOrdering';
 import { getPublishedSubjectsResult } from '@/lib/subjects';
 import type { AuthUser, Bookmark, Department, Document, Semester, Subject } from '@/types';
 import Link from 'next/link';
@@ -26,6 +30,8 @@ export default function DashboardPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [semesters, setSemesters] = useState<Semester[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
+  const [selectedSemesterNumber, setSelectedSemesterNumber] = useState('');
   const [semesterMap, setSemesterMap] = useState<Record<string, string>>({});
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [subjectsLoading, setSubjectsLoading] = useState(false);
@@ -189,8 +195,21 @@ export default function DashboardPage() {
     router.push('/');
   };
 
+  const departmentFilteredSubjects = filterSubjectsByDepartmentAndSemester(subjects, semesters, {
+    departmentId: selectedDepartmentId,
+    semesterNumber: selectedSemesterNumber,
+  });
+  const availableSemesterNumbers = getAvailableSemesterNumbers(
+    selectedDepartmentId
+      ? filterSubjectsByDepartmentAndSemester(subjects, semesters, {
+          departmentId: selectedDepartmentId,
+          semesterNumber: '',
+        })
+      : subjects,
+    semesters
+  );
   const normalizedQuery = searchQuery.trim().toLowerCase();
-  const filteredSubjects = subjects.filter((subject) => {
+  const filteredSubjects = departmentFilteredSubjects.filter((subject) => {
     if (!normalizedQuery) {
       return true;
     }
@@ -250,7 +269,42 @@ export default function DashboardPage() {
           </div>
         ) : null}
 
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6">
+        <div className="grid gap-4 rounded-3xl border border-slate-800 bg-slate-900/90 p-6 lg:grid-cols-3">
+          <label className="block">
+            <span className="text-sm text-slate-400">Department</span>
+            <select
+              value={selectedDepartmentId}
+              onChange={(event) => {
+                setSelectedDepartmentId(event.target.value);
+                setSelectedSemesterNumber('');
+              }}
+              className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-slate-100 outline-none transition focus:border-brand-500"
+            >
+              <option value="">All departments</option>
+              {departments.map((department) => (
+                <option key={department.id} value={department.id}>
+                  {department.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="text-sm text-slate-400">Semester</span>
+            <select
+              value={selectedSemesterNumber}
+              onChange={(event) => setSelectedSemesterNumber(event.target.value)}
+              className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-slate-100 outline-none transition focus:border-brand-500"
+            >
+              <option value="">All semesters</option>
+              {availableSemesterNumbers.map((number) => (
+                <option key={number} value={number}>
+                  Semester {number}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <label className="block">
             <span className="text-sm text-slate-400">Search subjects</span>
             <input
@@ -336,6 +390,10 @@ export default function DashboardPage() {
           ) : subjects.length === 0 ? (
             <div className="col-span-full flex items-center justify-center py-16">
               <div className="text-slate-400">No published subjects are available yet.</div>
+            </div>
+          ) : departmentFilteredSubjects.length === 0 ? (
+            <div className="col-span-full flex items-center justify-center py-16">
+              <div className="text-slate-400">No subjects match this department and semester.</div>
             </div>
           ) : filteredSubjects.length === 0 ? (
             <div className="col-span-full flex items-center justify-center py-16">

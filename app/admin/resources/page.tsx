@@ -25,7 +25,11 @@ import {
   isStorageUploadConfigured,
   uploadResourceFile,
 } from '@/lib/storage';
-import { groupSubjectsByAcademicOrder } from '@/lib/subjectOrdering';
+import {
+  filterSubjectsByDepartmentAndSemester,
+  getAvailableSemesterNumbers,
+  groupSubjectsByAcademicOrder,
+} from '@/lib/subjectOrdering';
 import { getSubjectsResult, updateSubject } from '@/lib/subjects';
 import type {
   AdminActivityLog,
@@ -265,6 +269,8 @@ export default function AdminResourcesPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [semesters, setSemesters] = useState<Semester[]>([]);
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
+  const [selectedDepartmentFilterId, setSelectedDepartmentFilterId] = useState('');
+  const [selectedSemesterFilterNumber, setSelectedSemesterFilterNumber] = useState('');
   const [modules, setModules] = useState<Module[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoadingSubjects, setIsLoadingSubjects] = useState(false);
@@ -518,7 +524,20 @@ export default function AdminResourcesPage() {
   };
 
   const selectedSubject = subjects.find((subject) => subject.id === selectedSubjectId) ?? null;
-  const subjectOptionGroups = groupSubjectsByAcademicOrder(subjects, { departments, semesters });
+  const subjectsForSelector = filterSubjectsByDepartmentAndSemester(subjects, semesters, {
+    departmentId: selectedDepartmentFilterId,
+    semesterNumber: selectedSemesterFilterNumber,
+  });
+  const availableSelectorSemesterNumbers = getAvailableSemesterNumbers(
+    selectedDepartmentFilterId
+      ? filterSubjectsByDepartmentAndSemester(subjects, semesters, {
+          departmentId: selectedDepartmentFilterId,
+          semesterNumber: '',
+        })
+      : subjects,
+    semesters
+  );
+  const subjectOptionGroups = groupSubjectsByAcademicOrder(subjectsForSelector, { departments, semesters });
 
   const handlePublishSelectedSubject = async () => {
     if (!selectedSubject) {
@@ -1586,32 +1605,93 @@ export default function AdminResourcesPage() {
 
         {/* Subject selector */}
         <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-8">
-          <label className="block">
-            <span className="text-sm text-slate-400">Select Subject</span>
-            <select
-              value={selectedSubjectId}
-              onChange={(e) => {
-                setSelectedSubjectId(e.target.value);
-                setShowModuleForm(false);
-                setShowDocForm(false);
-              }}
-              disabled={isLoadingSubjects}
-              className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-slate-100 outline-none transition focus:border-brand-500 md:max-w-sm"
-            >
-              <option value="">
-                {isLoadingSubjects ? 'Loading subjects...' : '— Choose a subject —'}
-              </option>
-              {subjectOptionGroups.map((group) => (
-                <optgroup key={group.id} label={group.title}>
-                  {group.subjects.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.code ? `${s.code} - ` : ''}{s.name} {s.published ? '' : '- Draft'}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          </label>
+          <div>
+            <p className="text-sm uppercase tracking-[0.25em] text-brand-300">Upload location</p>
+            <h2 className="mt-2 text-xl font-semibold text-white">Choose department, semester, and subject</h2>
+            <p className="mt-2 text-sm text-slate-400">
+              This keeps shared CS subjects easy to find without deleting valid department-wise records.
+            </p>
+          </div>
+
+          <div className="mt-6 grid gap-4 lg:grid-cols-3">
+            <label className="block">
+              <span className="text-sm text-slate-400">Department</span>
+              <select
+                value={selectedDepartmentFilterId}
+                onChange={(event) => {
+                  setSelectedDepartmentFilterId(event.target.value);
+                  setSelectedSemesterFilterNumber('');
+                  setSelectedSubjectId('');
+                  setShowModuleForm(false);
+                  setShowDocForm(false);
+                }}
+                disabled={isLoadingSubjects}
+                className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-slate-100 outline-none transition focus:border-brand-500"
+              >
+                <option value="">All departments</option>
+                {departments.map((department) => (
+                  <option key={department.id} value={department.id}>
+                    {department.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="text-sm text-slate-400">Semester</span>
+              <select
+                value={selectedSemesterFilterNumber}
+                onChange={(event) => {
+                  setSelectedSemesterFilterNumber(event.target.value);
+                  setSelectedSubjectId('');
+                  setShowModuleForm(false);
+                  setShowDocForm(false);
+                }}
+                disabled={isLoadingSubjects}
+                className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-slate-100 outline-none transition focus:border-brand-500"
+              >
+                <option value="">All semesters</option>
+                {availableSelectorSemesterNumbers.map((number) => (
+                  <option key={number} value={number}>
+                    Semester {number}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="text-sm text-slate-400">Subject</span>
+              <select
+                value={selectedSubjectId}
+                onChange={(e) => {
+                  setSelectedSubjectId(e.target.value);
+                  setShowModuleForm(false);
+                  setShowDocForm(false);
+                }}
+                disabled={isLoadingSubjects || subjectsForSelector.length === 0}
+                className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-slate-100 outline-none transition focus:border-brand-500 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <option value="">
+                  {isLoadingSubjects ? 'Loading subjects...' : 'Choose a subject'}
+                </option>
+                {subjectOptionGroups.map((group) => (
+                  <optgroup key={group.id} label={group.title}>
+                    {group.subjects.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.code ? `${s.code} - ` : ''}{s.name} {s.published ? '' : '- Draft'}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {!isLoadingSubjects && subjects.length > 0 && subjectsForSelector.length === 0 ? (
+            <div className="mt-4 rounded-2xl border border-amber-800 bg-amber-950/40 p-4 text-sm text-amber-200">
+              No subjects match this department and semester. Choose a different semester or add the missing subject first.
+            </div>
+          ) : null}
 
           {subjectLoadNotice ? (
             <div className="mt-4 rounded-2xl border border-amber-800 bg-amber-950/40 p-4 text-sm text-amber-200">

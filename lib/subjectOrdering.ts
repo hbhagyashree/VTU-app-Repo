@@ -11,6 +11,11 @@ export interface SubjectGroup {
   subjects: Subject[];
 }
 
+export interface SubjectFilterOptions {
+  departmentId: string;
+  semesterNumber: string;
+}
+
 function compareOptionalText(left?: string, right?: string): number {
   return (left ?? '').localeCompare(right ?? '');
 }
@@ -100,4 +105,41 @@ export function groupSubjectsByAcademicOrder(
   }
 
   return [...groups.values()];
+}
+
+export function filterSubjectsByDepartmentAndSemester(
+  subjects: Subject[],
+  semesters: Semester[],
+  { departmentId, semesterNumber }: SubjectFilterOptions
+): Subject[] {
+  const semesterById = new Map(semesters.map((semester) => [semester.id, semester]));
+
+  return subjects.filter((subject) => {
+    const semester = semesterById.get(subject.semester_id);
+
+    if (departmentId && (semester?.department_id ?? subject.department_id) !== departmentId) {
+      return false;
+    }
+
+    if (semesterNumber && String(semester?.number ?? '') !== semesterNumber) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+export function getAvailableSemesterNumbers(subjects: Subject[], semesters: Semester[]): number[] {
+  const semesterById = new Map(semesters.map((semester) => [semester.id, semester]));
+  const numbers = new Set<number>();
+
+  for (const subject of subjects) {
+    const semesterNumber = semesterById.get(subject.semester_id)?.number;
+
+    if (semesterNumber) {
+      numbers.add(semesterNumber);
+    }
+  }
+
+  return [...numbers].sort((left, right) => left - right);
 }
