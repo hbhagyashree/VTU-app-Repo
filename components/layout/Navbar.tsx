@@ -45,20 +45,23 @@ export default function Navbar() {
   };
 
   return (
-    <header className="border-b border-slate-800 bg-slate-950/90">
+    <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-        <Link href="/" className="text-lg font-semibold text-white">
-          VTU SmartPrep
+        <Link href="/" className="group flex items-center gap-3 text-lg font-semibold text-white">
+          <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-brand-400 to-ocean-400 text-sm font-black text-slate-950 shadow-lg shadow-brand-950/30">
+            VTU
+          </span>
+          <span className="hidden sm:inline">SmartPrep</span>
         </Link>
 
-        <div className="flex items-center gap-4 text-sm text-slate-300">
-          <Link href="/" className="hover:text-white">Home</Link>
+        <div className="flex items-center gap-2 text-sm text-slate-300 sm:gap-3">
+          <Link href="/" className="rounded-full px-3 py-2 transition hover:bg-white/10 hover:text-white">Home</Link>
 
           {user === undefined ? null : user === null ? (
             <>
               <Link
                 href="/login"
-                className="rounded-md border border-slate-700 px-3 py-2 hover:border-slate-500 hover:text-white"
+                className="rounded-full border border-brand-400/40 bg-brand-500/10 px-4 py-2 font-semibold text-brand-100 transition hover:border-brand-300 hover:bg-brand-500/20"
               >
                 Login
               </Link>
@@ -66,18 +69,18 @@ export default function Navbar() {
           ) : (
             <>
               {user.role === 'admin' ? (
-                <Link href="/admin" className="hover:text-white">Admin</Link>
+                <Link href="/admin" className="rounded-full px-3 py-2 transition hover:bg-white/10 hover:text-white">Admin</Link>
               ) : (
                 <>
-                  <Link href="/dashboard" className="hover:text-white">Dashboard</Link>
-                  <Link href="/subjects" className="hover:text-white">Subjects</Link>
-                  <Link href="/bookmarks" className="hover:text-white">Bookmarks</Link>
+                  <Link href="/dashboard" className="rounded-full px-3 py-2 transition hover:bg-white/10 hover:text-white">Dashboard</Link>
+                  <Link href="/subjects" className="rounded-full px-3 py-2 transition hover:bg-white/10 hover:text-white">Subjects</Link>
+                  <Link href="/bookmarks" className="rounded-full px-3 py-2 transition hover:bg-white/10 hover:text-white">Bookmarks</Link>
                 </>
               )}
               <button
                 type="button"
                 onClick={handleLogout}
-                className="rounded-md border border-slate-700 px-3 py-2 hover:border-slate-500 hover:text-white"
+                className="rounded-full border border-white/10 px-4 py-2 transition hover:border-white/30 hover:text-white"
               >
                 Logout
               </button>

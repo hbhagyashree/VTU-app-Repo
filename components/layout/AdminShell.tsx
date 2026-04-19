@@ -16,8 +16,8 @@ export default function AdminShell({ children }: AdminShellProps) {
   return (
     <AppShell>
       <div className="grid gap-6 md:grid-cols-[220px_1fr]">
-        <aside className="rounded-md border border-slate-800 bg-slate-900 p-4">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-400">
+        <aside className="glass-panel rounded-3xl p-4">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.25em] text-brand-200">
             Admin
           </h2>
 
@@ -26,7 +26,7 @@ export default function AdminShell({ children }: AdminShellProps) {
               <Link
                 key={link.href}
                 href={link.href}
-                className="block rounded-md px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white"
+                className="block rounded-2xl px-3 py-2 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white"
               >
                 {link.label}
               </Link>
