@@ -1,4 +1,5 @@
 import Navbar from './Navbar';
+import { Linkedin } from 'lucide-react';
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -18,8 +19,9 @@ export default function AppShell({ children }: AppShellProps) {
             href="https://www.linkedin.com/in/bhagyashree-hosmani-95644117b/"
             target="_blank"
             rel="noreferrer"
-            className="inline-flex w-fit rounded-full border border-white/10 bg-white/5 px-4 py-2 font-medium text-slate-200 transition hover:border-brand-300/50 hover:text-white"
+            className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 font-medium text-slate-200 transition hover:border-brand-300/50 hover:text-white"
           >
+            <Linkedin className="h-4 w-4 text-ocean-300" aria-hidden="true" />
             Created by Bhagyashree Hosmani
           </a>
         </div>
