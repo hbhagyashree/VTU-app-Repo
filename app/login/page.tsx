@@ -1,7 +1,12 @@
 'use client';
 
 import AppShell from '@/components/layout/AppShell';
-import { isUsingSupabaseAuth, login, resendSignupConfirmation } from '@/lib/auth';
+import {
+  isUsingSupabaseAuth,
+  login,
+  resendSignupConfirmation,
+  sendPasswordResetEmail,
+} from '@/lib/auth';
 import type { LoginInput } from '@/types';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -27,6 +32,7 @@ export default function LoginPage() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [isSendingReset, setIsSendingReset] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
@@ -73,6 +79,28 @@ export default function LoginPage() {
       setError(message);
     } finally {
       setIsResending(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!formData.email) {
+      setError('Enter your email address first so we can send the password reset link.');
+      return;
+    }
+
+    setIsSendingReset(true);
+    setError(null);
+    setInfoMessage(null);
+
+    try {
+      await sendPasswordResetEmail(formData.email);
+      setInfoMessage('Password reset link sent. Check your inbox and spam folder.');
+    } catch (resetError) {
+      const message =
+        resetError instanceof Error ? resetError.message : 'Unable to send password reset email.';
+      setError(message);
+    } finally {
+      setIsSendingReset(false);
     }
   };
 
@@ -143,14 +171,24 @@ export default function LoginPage() {
         </form>
 
         {supabaseAuthEnabled ? (
-          <button
-            type="button"
-            onClick={handleResendConfirmation}
-            disabled={isResending}
-            className="mt-4 text-sm text-brand-300 transition hover:text-brand-200 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isResending ? 'Sending confirmation email...' : 'Resend confirmation email'}
-          </button>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              disabled={isSendingReset}
+              className="text-left text-sm text-brand-300 transition hover:text-brand-200 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isSendingReset ? 'Sending reset link...' : 'Forgot password?'}
+            </button>
+            <button
+              type="button"
+              onClick={handleResendConfirmation}
+              disabled={isResending}
+              className="text-left text-sm text-slate-400 transition hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-50 sm:text-right"
+            >
+              {isResending ? 'Sending confirmation email...' : 'Resend confirmation email'}
+            </button>
+          </div>
         ) : null}
 
         <p className="mt-6 text-sm text-slate-400">

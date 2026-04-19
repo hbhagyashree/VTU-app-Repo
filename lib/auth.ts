@@ -256,6 +256,39 @@ export async function resendSignupConfirmation(email: string): Promise<void> {
   }
 }
 
+export async function sendPasswordResetEmail(email: string): Promise<void> {
+  if (!isSupabaseAuthEnabled()) {
+    throw new Error('Password reset is only available when Supabase auth is configured.');
+  }
+
+  const authClient = getSupabaseAuthClient();
+  const redirectTo = isBrowser()
+    ? `${window.location.origin}/reset-password`
+    : undefined;
+  const { error } = await authClient.auth.resetPasswordForEmail(email, {
+    redirectTo,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function updatePassword(newPassword: string): Promise<void> {
+  if (!isSupabaseAuthEnabled()) {
+    throw new Error('Password reset is only available when Supabase auth is configured.');
+  }
+
+  const authClient = getSupabaseAuthClient();
+  const { error } = await authClient.auth.updateUser({
+    password: newPassword,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 export async function logout(): Promise<void> {
   if (isSupabaseAuthEnabled()) {
     const authClient = getSupabaseAuthClient();
