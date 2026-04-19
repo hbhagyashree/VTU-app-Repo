@@ -3,7 +3,8 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'VTU SmartPrep',
-  description: 'AI-powered VTU exam preparation platform for students and admins.',
+  description: 'VTU SmartPrep study platform created by Bhagyashree Hosmani.',
+  authors: [{ name: 'Bhagyashree Hosmani', url: 'https://www.linkedin.com/in/bhagyashree-hosmani-95644117b/' }],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

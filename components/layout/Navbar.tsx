@@ -46,15 +46,15 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
-      <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-        <Link href="/" className="group flex items-center gap-3 text-lg font-semibold text-white">
+      <nav className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+        <Link href="/" className="group flex w-fit items-center gap-3 text-lg font-semibold text-white">
           <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-brand-400 to-ocean-400 text-sm font-black text-slate-950 shadow-lg shadow-brand-950/30">
             VTU
           </span>
-          <span className="hidden sm:inline">SmartPrep</span>
+          <span>SmartPrep</span>
         </Link>
 
-        <div className="flex items-center gap-2 text-sm text-slate-300 sm:gap-3">
+        <div className="flex max-w-full flex-wrap items-center gap-2 text-sm text-slate-300 sm:justify-end sm:gap-3">
           <Link href="/" className="rounded-full px-3 py-2 transition hover:bg-white/10 hover:text-white">Home</Link>
 
           {user === undefined ? null : user === null ? (

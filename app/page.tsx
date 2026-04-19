@@ -24,7 +24,7 @@ const features = [
 export default function HomePage() {
   return (
     <AppShell>
-      <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/40 p-6 shadow-2xl shadow-slate-950/30 sm:p-10 lg:p-12">
+      <section className="relative overflow-hidden rounded-[1.6rem] border border-white/10 bg-slate-950/40 p-5 shadow-2xl shadow-slate-950/30 sm:rounded-[2rem] sm:p-10 lg:p-12">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(249,115,22,0.18),transparent_28%),radial-gradient(circle_at_85%_20%,rgba(34,211,238,0.14),transparent_30%)]" />
         <div className="relative grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
           <div>
@@ -32,10 +32,10 @@ export default function HomePage() {
               <Sparkles className="h-4 w-4" />
               VTU exam prep, organized by subject
             </div>
-            <h1 className="max-w-3xl text-4xl font-black leading-[1.02] tracking-tight text-white sm:text-6xl">
+            <h1 className="max-w-3xl text-4xl font-black leading-[1.04] tracking-tight text-white sm:text-6xl">
               Study faster with notes, PYQs, and solved answers in one calm workspace.
             </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
+            <p className="mt-6 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg sm:leading-8">
               VTU SmartPrep keeps module-wise resources, uploaded PDFs, and saved study materials behind a clean student login, so revision feels focused from the first click.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -49,10 +49,10 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="glass-panel rounded-[2rem] p-6">
+          <div className="glass-panel rounded-[1.5rem] p-4 sm:rounded-[2rem] sm:p-6">
             <div className="rounded-3xl border border-white/10 bg-slate-950/60 p-5">
               <p className="text-sm uppercase tracking-[0.3em] text-ocean-300">Study flow</p>
-              <h2 className="mt-3 text-2xl font-bold text-white">Everything students need after login</h2>
+              <h2 className="mt-3 text-xl font-bold text-white sm:text-2xl">Everything students need after login</h2>
               <div className="mt-6 space-y-4">
                 {[
                   'Open published subjects only',

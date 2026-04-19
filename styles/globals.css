@@ -9,10 +9,12 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 body {
   min-height: 100vh;
+  overflow-x: hidden;
   background:
     radial-gradient(circle at 12% 8%, rgba(249, 115, 22, 0.2), transparent 26%),
     radial-gradient(circle at 85% 18%, rgba(34, 211, 238, 0.16), transparent 28%),
