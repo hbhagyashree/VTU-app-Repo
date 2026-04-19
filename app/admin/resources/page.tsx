@@ -23,7 +23,7 @@ import {
   isStorageUploadConfigured,
   uploadResourceFile,
 } from '@/lib/storage';
-import { getSubjectsResult } from '@/lib/subjects';
+import { getSubjectsResult, updateSubject } from '@/lib/subjects';
 import type {
   AdminActivityLog,
   CreateDocumentInput,
@@ -222,6 +222,7 @@ export default function AdminResourcesPage() {
   const [activityNotice, setActivityNotice] = useState<string | null>(null);
   const [documentBookmarkCounts, setDocumentBookmarkCounts] = useState<Record<string, number>>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isPublishingSubject, setIsPublishingSubject] = useState(false);
   const [recentChanges, setRecentChanges] = useState<RecentChangeItem[]>([]);
   const [recentChangeActionFilter, setRecentChangeActionFilter] = useState<'all' | string>('all');
   const [recentChangeAdminQuery, setRecentChangeAdminQuery] = useState('');
@@ -442,6 +443,36 @@ export default function AdminResourcesPage() {
       setModuleFormError(err instanceof Error ? err.message : 'Failed to create module');
     } finally {
       setIsSubmittingModule(false);
+    }
+  };
+
+  const selectedSubject = subjects.find((subject) => subject.id === selectedSubjectId) ?? null;
+
+  const handlePublishSelectedSubject = async () => {
+    if (!selectedSubject) {
+      return;
+    }
+
+    setIsPublishingSubject(true);
+    setSuccessMessage(null);
+
+    try {
+      const updatedSubject = await updateSubject(selectedSubject.id, { published: true });
+      setSubjects((prev) =>
+        prev.map((subject) => (subject.id === updatedSubject.id ? updatedSubject : subject))
+      );
+      setSuccessMessage(
+        `"${updatedSubject.name}" is now published. Students can see this subject and its uploaded resources.`
+      );
+      void addRecentChange('Subject published', updatedSubject.name, {
+        subject_id: updatedSubject.id,
+      });
+    } catch (error) {
+      setSuccessMessage(
+        error instanceof Error ? error.message : 'Failed to publish this subject.'
+      );
+    } finally {
+      setIsPublishingSubject(false);
     }
   };
 
@@ -1431,7 +1462,7 @@ export default function AdminResourcesPage() {
               </option>
               {subjects.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.name} {s.code ? `(${s.code})` : ''}
+                  {s.name} {s.code ? `(${s.code})` : ''} {s.published ? '' : '— Draft'}
                 </option>
               ))}
             </select>
@@ -1440,6 +1471,27 @@ export default function AdminResourcesPage() {
           {subjectLoadNotice ? (
             <div className="mt-4 rounded-2xl border border-amber-800 bg-amber-950/40 p-4 text-sm text-amber-200">
               {subjectLoadNotice}
+            </div>
+          ) : null}
+
+          {selectedSubject && !selectedSubject.published ? (
+            <div className="mt-4 rounded-2xl border border-amber-800 bg-amber-950/40 p-4 text-sm text-amber-100">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-semibold text-amber-100">This subject is still a draft.</p>
+                  <p className="mt-1 text-amber-200/90">
+                    Uploaded notes and PDFs are saved, but students cannot see them until the subject is published.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handlePublishSelectedSubject}
+                  disabled={isPublishingSubject}
+                  className="rounded-full bg-amber-400 px-5 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isPublishingSubject ? 'Publishing...' : 'Publish for students'}
+                </button>
+              </div>
             </div>
           ) : null}
         </div>
