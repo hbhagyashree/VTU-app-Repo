@@ -3,14 +3,18 @@
 import AppShell from '@/components/layout/AppShell';
 import SubjectCard from '@/components/student/SubjectCard';
 import { getAllSemesters } from '@/lib/academics';
+import { getProtectedRouteState } from '@/lib/auth';
 import { getPublishedSubjectsResult } from '@/lib/subjects';
 import type { Subject } from '@/types';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 export default function SubjectsPage() {
+  const router = useRouter();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [semesterMap, setSemesterMap] = useState<Record<string, string>>({});
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [usingFallbackData, setUsingFallbackData] = useState(false);
@@ -19,6 +23,14 @@ export default function SubjectsPage() {
     let isActive = true;
 
     const loadData = async () => {
+      const { redirectTo } = await getProtectedRouteState('student');
+      if (!isActive) return;
+      if (redirectTo) {
+        router.push(redirectTo);
+        return;
+      }
+
+      setIsCheckingAuth(false);
       setIsLoading(true);
       setError(null);
 
@@ -46,7 +58,7 @@ export default function SubjectsPage() {
 
     loadData();
     return () => { isActive = false; };
-  }, []);
+  }, [router]);
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const filteredSubjects = subjects.filter((subject) => {
@@ -63,6 +75,12 @@ export default function SubjectsPage() {
   return (
     <AppShell>
       <div className="flex flex-col gap-6">
+        {isCheckingAuth ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="text-slate-400">Checking your account...</div>
+          </div>
+        ) : (
+          <>
         <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-8 shadow-2xl shadow-slate-950/20">
           <p className="text-sm uppercase tracking-[0.3em] text-brand-300">Subjects</p>
           <h1 className="mt-4 text-3xl font-semibold text-white">All Available Subjects</h1>
@@ -119,6 +137,8 @@ export default function SubjectsPage() {
             ))
           )}
         </section>
+          </>
+        )}
       </div>
     </AppShell>
   );

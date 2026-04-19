@@ -53,7 +53,6 @@ export default function Navbar() {
 
         <div className="flex items-center gap-4 text-sm text-slate-300">
           <Link href="/" className="hover:text-white">Home</Link>
-          <Link href="/subjects" className="hover:text-white">Subjects</Link>
 
           {user === undefined ? null : user === null ? (
             <>
@@ -71,6 +70,7 @@ export default function Navbar() {
               ) : (
                 <>
                   <Link href="/dashboard" className="hover:text-white">Dashboard</Link>
+                  <Link href="/subjects" className="hover:text-white">Subjects</Link>
                   <Link href="/bookmarks" className="hover:text-white">Bookmarks</Link>
                 </>
               )}

@@ -15,8 +15,8 @@ const features = [
     icon: LayoutDashboard,
   },
   {
-    title: 'Admin control panel',
-    description: 'Manage departments, subjects and upload curriculum resources from one place.',
+    title: 'Curated study resources',
+    description: 'Published notes and exam materials stay organized by subject and module.',
     icon: Cpu,
   },
 ];
@@ -35,12 +35,12 @@ export default function HomePage() {
             Access subject notes, PYQs, solved answers, and admin-managed resources in one reliable platform.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <Link href="/dashboard" className="inline-flex items-center justify-center rounded-full bg-brand-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-400">
-              Open student dashboard
+            <Link href="/login" className="inline-flex items-center justify-center rounded-full bg-brand-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-400">
+              Sign in to continue
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
-            <Link href="/admin" className="inline-flex items-center justify-center rounded-full border border-slate-700 bg-slate-900 px-6 py-3 text-sm font-semibold text-slate-100 transition hover:border-slate-500">
-              Open admin dashboard
+            <Link href="/signup" className="inline-flex items-center justify-center rounded-full border border-slate-700 bg-slate-900 px-6 py-3 text-sm font-semibold text-slate-100 transition hover:border-slate-500">
+              Create student account
             </Link>
           </div>
         </div>

@@ -3,11 +3,12 @@
 import AppShell from '@/components/layout/AppShell';
 import { getAllSemesters, getSubjectResources } from '@/lib/academics';
 import { getSubjectBookmarks, toggleDocumentBookmark } from '@/lib/bookmarks';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, getProtectedRouteState } from '@/lib/auth';
 import { getSubjectByIdResult } from '@/lib/subjects';
 import type { AuthUser, Bookmark, Document, Module, Subject } from '@/types';
 import { Bookmark as BookmarkIcon, Eye, X } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 interface SubjectPageProps {
@@ -169,11 +170,13 @@ function ResourceCard({
 }
 
 export default function SubjectPage({ params }: SubjectPageProps) {
+  const router = useRouter();
   const { subjectId } = params;
   const [subject, setSubject] = useState<Subject | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [semesterTitle, setSemesterTitle] = useState<string>('');
+  const [isAccessAllowed, setIsAccessAllowed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [resourcesLoading, setResourcesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -194,6 +197,18 @@ export default function SubjectPage({ params }: SubjectPageProps) {
     let isActive = true;
 
     const loadSubject = async () => {
+      const { user, redirectTo } = await getProtectedRouteState('student');
+      if (!isActive) {
+        return;
+      }
+
+      if (redirectTo) {
+        router.push(redirectTo);
+        return;
+      }
+
+      setCurrentUser(user);
+      setIsAccessAllowed(true);
       setIsLoading(true);
       setError(null);
 
@@ -239,7 +254,7 @@ export default function SubjectPage({ params }: SubjectPageProps) {
     return () => {
       isActive = false;
     };
-  }, [subjectId]);
+  }, [router, subjectId]);
 
   useEffect(() => {
     setSelectedModuleId('all');
@@ -249,6 +264,10 @@ export default function SubjectPage({ params }: SubjectPageProps) {
   }, [subjectId]);
 
   useEffect(() => {
+    if (!isAccessAllowed) {
+      return;
+    }
+
     let isActive = true;
 
     const loadUserAndBookmarks = async () => {
@@ -290,9 +309,13 @@ export default function SubjectPage({ params }: SubjectPageProps) {
     return () => {
       isActive = false;
     };
-  }, [subjectId]);
+  }, [isAccessAllowed, subjectId]);
 
   useEffect(() => {
+    if (!isAccessAllowed) {
+      return;
+    }
+
     let isActive = true;
 
     const loadResources = async () => {
@@ -327,7 +350,7 @@ export default function SubjectPage({ params }: SubjectPageProps) {
     return () => {
       isActive = false;
     };
-  }, [subjectId]);
+  }, [isAccessAllowed, subjectId]);
 
   if (isLoading) {
     return (
