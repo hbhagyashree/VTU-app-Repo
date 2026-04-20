@@ -1,4 +1,4 @@
-import type { Document } from '@/types';
+import type { Document, Module } from '@/types';
 
 export function getFileLabel(fileUrl: string): string {
   try {
@@ -10,7 +10,7 @@ export function getFileLabel(fileUrl: string): string {
   }
 }
 
-function getGoogleDriveFileId(fileUrl: string): string | null {
+function getGoogleDriveInfo(fileUrl: string): { type: 'file' | 'folder'; id: string } | null {
   try {
     const url = new URL(fileUrl);
 
@@ -20,10 +20,21 @@ function getGoogleDriveFileId(fileUrl: string): string | null {
 
     const filePathMatch = url.pathname.match(/\/file\/d\/([^/]+)/);
     if (filePathMatch?.[1]) {
-      return filePathMatch[1];
+      return { type: 'file', id: filePathMatch[1] };
     }
 
-    return url.searchParams.get('id');
+    const folderPathMatch = url.pathname.match(/\/drive\/folders\/([^/]+)/);
+    if (folderPathMatch?.[1]) {
+      return { type: 'folder', id: folderPathMatch[1] };
+    }
+
+    if (url.pathname.includes('folderview')) {
+      const folderId = url.searchParams.get('id');
+      return folderId ? { type: 'folder', id: folderId } : null;
+    }
+
+    const directFileId = url.searchParams.get('id');
+    return directFileId ? { type: 'file', id: directFileId } : null;
   } catch {
     return null;
   }
@@ -34,12 +45,24 @@ export function getEmbeddedFileUrl(fileUrl?: string): string | null {
     return null;
   }
 
-  const driveFileId = getGoogleDriveFileId(fileUrl);
-  if (driveFileId) {
-    return `https://drive.google.com/file/d/${driveFileId}/preview`;
+  const driveInfo = getGoogleDriveInfo(fileUrl);
+  if (driveInfo?.type === 'file') {
+    return `https://drive.google.com/file/d/${driveInfo.id}/preview`;
+  }
+
+  if (driveInfo?.type === 'folder') {
+    return `https://drive.google.com/embeddedfolderview?id=${driveInfo.id}#list`;
   }
 
   return fileUrl;
+}
+
+export function getEmbeddedFileKind(fileUrl?: string): 'folder' | 'file' | 'unknown' {
+  if (!fileUrl) {
+    return 'unknown';
+  }
+
+  return getGoogleDriveInfo(fileUrl)?.type ?? 'file';
 }
 
 export function getDocumentYear(document: Document): number | null {
@@ -99,4 +122,28 @@ export function groupDocumentsByYear(documents: Document[]): Array<{
     yearLabel,
     documents: groupedDocuments,
   }));
+}
+
+export function getModuleDisplayTitle(module: Pick<Module, 'order' | 'title'>): string {
+  const normalizedTitle = module.title.trim().toLowerCase();
+
+  if (['pyq', 'pyqs', 'previous year questions'].includes(normalizedTitle)) {
+    return 'PYQs';
+  }
+
+  if (normalizedTitle === 'syllabus') {
+    return 'Syllabus';
+  }
+
+  return `Module ${module.order}: ${module.title}`;
+}
+
+export function getModuleShortTitle(module: Pick<Module, 'order' | 'title'>): string {
+  const normalizedTitle = module.title.trim().toLowerCase();
+
+  if (['pyq', 'pyqs', 'previous year questions', 'syllabus'].includes(normalizedTitle)) {
+    return module.title;
+  }
+
+  return `Module ${module.order}`;
 }

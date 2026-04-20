@@ -77,7 +77,7 @@ async function getOrCreatePyqModule(supabase, subjectId) {
   }
 
   const usedOrders = new Set(modules.map((module) => module.order));
-  let order = 99;
+  let order = Math.max(0, ...modules.map((module) => module.order)) + 1;
 
   while (usedOrders.has(order)) {
     order += 1;

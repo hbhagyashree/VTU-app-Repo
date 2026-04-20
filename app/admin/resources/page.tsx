@@ -30,6 +30,7 @@ import {
   getAvailableSemesterNumbers,
   groupSubjectsByAcademicOrder,
 } from '@/lib/subjectOrdering';
+import { getModuleDisplayTitle, getModuleShortTitle } from '@/lib/resourceDisplay';
 import { getSubjectsResult, updateSubject } from '@/lib/subjects';
 import type {
   AdminActivityLog,
@@ -1002,8 +1003,10 @@ export default function AdminResourcesPage() {
     }
   };
 
-  const getModuleTitle = (moduleId: string) =>
-    modules.find((m) => m.id === moduleId)?.title ?? 'Unknown module';
+  const getModuleTitle = (moduleId: string) => {
+    const matchedModule = modules.find((m) => m.id === moduleId);
+    return matchedModule ? getModuleDisplayTitle(matchedModule) : 'Unknown module';
+  };
 
   const getFileLabel = (fileUrl: string) => {
     try {
@@ -1817,8 +1820,12 @@ export default function AdminResourcesPage() {
                     <p className="text-slate-400">No modules yet. Add one above.</p>
                   ) : (
                     <div className="space-y-2">
-                      {modules.map((mod) => (
-                        editingModuleId === mod.id ? (
+                      {modules.map((mod) => {
+                        const moduleShortTitle = getModuleShortTitle(mod);
+                        const moduleDisplayTitle = getModuleDisplayTitle(mod);
+                        const shouldShowShortTitle = moduleShortTitle !== moduleDisplayTitle;
+
+                        return editingModuleId === mod.id ? (
                           <div
                             key={mod.id}
                             className="rounded-xl border border-brand-700 bg-slate-950/70 p-4"
@@ -1882,8 +1889,10 @@ export default function AdminResourcesPage() {
                             className="flex items-center justify-between rounded-xl border border-slate-700 bg-slate-950/50 px-4 py-3"
                           >
                             <div>
-                              <span className="text-xs text-slate-500">#{mod.order} </span>
-                              <span className="font-medium text-slate-100">{mod.title}</span>
+                              {shouldShowShortTitle ? (
+                                <span className="text-xs text-slate-500">{moduleShortTitle} </span>
+                              ) : null}
+                              <span className="font-medium text-slate-100">{moduleDisplayTitle}</span>
                               {mod.description && (
                                 <p className="mt-0.5 text-sm text-slate-500">{mod.description}</p>
                               )}
@@ -1907,8 +1916,8 @@ export default function AdminResourcesPage() {
                               </button>
                             </div>
                           </div>
-                        )
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>

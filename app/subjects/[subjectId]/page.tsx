@@ -5,8 +5,10 @@ import { getAllSemesters, getSubjectResources } from '@/lib/academics';
 import { getSubjectBookmarks, toggleDocumentBookmark } from '@/lib/bookmarks';
 import { getCurrentUser, getProtectedRouteState } from '@/lib/auth';
 import {
+  getEmbeddedFileKind,
   getEmbeddedFileUrl,
   getFileLabel,
+  getModuleDisplayTitle,
   groupDocumentsByYear,
   sortDocumentsForStudy,
 } from '@/lib/resourceDisplay';
@@ -547,7 +549,7 @@ export default function SubjectPage({ params }: SubjectPageProps) {
                       }
                     >
                       <p className="text-sm font-semibold text-white">
-                        Module {module.order}: {module.title}
+                        {getModuleDisplayTitle(module)}
                       </p>
                       {module.description ? (
                         <p className="mt-1 line-clamp-2 text-xs text-slate-400">{module.description}</p>
@@ -634,7 +636,7 @@ export default function SubjectPage({ params }: SubjectPageProps) {
                       <div key={module.id} className="space-y-4">
                         <div>
                           <h4 className="text-lg font-semibold text-white">
-                            Module {module.order}: {module.title}
+                            {getModuleDisplayTitle(module)}
                           </h4>
                           {module.description ? (
                             <p className="mt-1 text-sm text-slate-400">{module.description}</p>
@@ -772,7 +774,11 @@ export default function SubjectPage({ params }: SubjectPageProps) {
                     <FileText className="h-4 w-4 text-brand-300" />
                     {getFileLabel(previewDocument.file_url)}
                   </p>
-                  <p className="text-xs text-slate-500">Viewing inside VTU SmartPrep</p>
+                  <p className="text-xs text-slate-500">
+                    {getEmbeddedFileKind(previewDocument.file_url) === 'folder'
+                      ? 'PYQ folder preview inside VTU SmartPrep'
+                      : 'Viewing inside VTU SmartPrep'}
+                  </p>
                 </div>
                 {getEmbeddedFileUrl(previewDocument.file_url) ? (
                   <iframe

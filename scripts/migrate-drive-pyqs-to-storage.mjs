@@ -38,6 +38,10 @@ function getDriveFileId(fileUrl) {
       return filePathMatch[1];
     }
 
+    if (url.pathname.includes('folderview') || url.pathname.includes('/drive/folders/')) {
+      return null;
+    }
+
     return url.searchParams.get('id');
   } catch {
     return null;
