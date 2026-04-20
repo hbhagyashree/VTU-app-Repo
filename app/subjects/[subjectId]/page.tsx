@@ -4,9 +4,15 @@ import AppShell from '@/components/layout/AppShell';
 import { getAllSemesters, getSubjectResources } from '@/lib/academics';
 import { getSubjectBookmarks, toggleDocumentBookmark } from '@/lib/bookmarks';
 import { getCurrentUser, getProtectedRouteState } from '@/lib/auth';
+import {
+  getEmbeddedFileUrl,
+  getFileLabel,
+  groupDocumentsByYear,
+  sortDocumentsForStudy,
+} from '@/lib/resourceDisplay';
 import { getSubjectByIdResult } from '@/lib/subjects';
 import type { AuthUser, Bookmark, Document, Module, Subject } from '@/types';
-import { Bookmark as BookmarkIcon, Eye, X } from 'lucide-react';
+import { Bookmark as BookmarkIcon, Eye, FileText, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -70,16 +76,6 @@ function getTabEmptyLabel(tab: TabId): string {
   return match ? match.label.toLowerCase() : 'resources';
 }
 
-function getFileLabel(fileUrl: string): string {
-  try {
-    const url = new URL(fileUrl);
-    const lastSegment = url.pathname.split('/').filter(Boolean).pop();
-    return lastSegment ? decodeURIComponent(lastSegment) : 'Attached file';
-  } catch {
-    return 'Attached file';
-  }
-}
-
 function formatDocumentDate(value?: string): string {
   if (!value) return 'Unknown date';
   const parsed = new Date(value);
@@ -123,18 +119,11 @@ function ResourceCard({
       )}
 
       {document.file_url ? (
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <span className="inline-flex max-w-full items-center rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1 text-xs text-slate-300">
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1 text-xs text-slate-300">
+            <FileText className="h-3.5 w-3.5 text-brand-300" />
             {getFileLabel(document.file_url)}
           </span>
-          <a
-            href={document.file_url}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex rounded-full border border-brand-500/60 bg-brand-500/10 px-4 py-2 text-sm font-medium text-brand-200 transition hover:border-brand-400 hover:bg-brand-500/20"
-          >
-            Open or download file
-          </a>
         </div>
       ) : null}
 
@@ -145,7 +134,7 @@ function ResourceCard({
           className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-950/90 px-4 py-2 text-sm font-medium text-slate-100 transition hover:border-brand-500"
         >
           <Eye className="h-4 w-4" />
-          Preview resource
+          {document.file_url ? 'Read inside website' : 'Preview resource'}
         </button>
         <button
           type="button"
@@ -427,22 +416,16 @@ export default function SubjectPage({ params }: SubjectPageProps) {
   const modulesWithDocuments = modules
     .map((module) => ({
       ...module,
-      documents: searchedDocuments.filter((document) => document.module_id === module.id),
+      documents: searchedDocuments
+        .filter((document) => document.module_id === module.id)
+        .sort(sortDocumentsForStudy),
     }))
     .filter((module) => module.documents.length > 0);
 
   const uncategorizedDocuments = searchedDocuments.filter(
     (document) => !modules.some((module) => module.id === document.module_id)
-  );
+  ).sort(sortDocumentsForStudy);
   const activeTabLabel = tabs.find((tab) => tab.id === activeTab)?.label ?? 'Resources';
-
-  const documentCounts = tabs.reduce<Record<TabId, number>>((counts, tab) => {
-    counts[tab.id] =
-      tab.id === 'all'
-        ? documents.length
-        : documents.filter((document) => document.type === tab.id).length;
-    return counts;
-  }, {} as Record<TabId, number>);
 
   const bookmarkedCount = searchedDocuments.filter((document) =>
     bookmarkedDocumentIds.has(document.id)
@@ -527,19 +510,6 @@ export default function SubjectPage({ params }: SubjectPageProps) {
           </div>
         ) : null}
 
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {tabs.map((tab) => (
-            <div
-              key={tab.id}
-              className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5"
-            >
-              <p className="text-xs uppercase tracking-[0.25em] text-slate-500">{tab.label}</p>
-              <p className="mt-3 text-3xl font-semibold text-white">{documentCounts[tab.id]}</p>
-              <p className="mt-2 text-sm text-slate-400">Available study resources</p>
-            </div>
-          ))}
-        </section>
-
         <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
           <aside className="rounded-3xl border border-slate-800 bg-slate-900/80 p-6">
             <h2 className="text-lg font-semibold text-white">Modules</h2>
@@ -559,14 +529,11 @@ export default function SubjectPage({ params }: SubjectPageProps) {
                   }
                 >
                   <p className="text-sm font-semibold text-white">All modules</p>
-                  <p className="mt-1 text-xs text-slate-400">View every resource in this tab together.</p>
+                  <p className="mt-1 text-xs text-slate-400">View notes, PYQs, syllabus, and answers together.</p>
                 </button>
 
                 {modules.map((module) => {
                   const isActiveModule = selectedModuleId === module.id;
-                  const moduleDocumentCount = documents.filter(
-                    (document) => document.module_id === module.id && document.type === activeTab
-                  ).length;
 
                   return (
                     <button
@@ -582,9 +549,9 @@ export default function SubjectPage({ params }: SubjectPageProps) {
                       <p className="text-sm font-semibold text-white">
                         Module {module.order}: {module.title}
                       </p>
-                      <p className="mt-1 text-xs text-slate-400">
-                        {moduleDocumentCount} {getTabEmptyLabel(activeTab)}
-                      </p>
+                      {module.description ? (
+                        <p className="mt-1 line-clamp-2 text-xs text-slate-400">{module.description}</p>
+                      ) : null}
                     </button>
                   );
                 })}
@@ -606,7 +573,7 @@ export default function SubjectPage({ params }: SubjectPageProps) {
                         : 'rounded-full border border-slate-700 bg-slate-950/90 px-4 py-2 text-sm font-medium text-slate-100 transition hover:border-brand-500'
                     }
                   >
-                    {tab.label} ({documentCounts[tab.id]})
+                    {tab.label}
                   </button>
                 ))}
               </div>
@@ -674,19 +641,44 @@ export default function SubjectPage({ params }: SubjectPageProps) {
                           ) : null}
                         </div>
 
-                      <div className="grid gap-4">
-                          {module.documents.map((document) => (
-                            <ResourceCard
-                              key={document.id}
-                              document={document}
-                              subtitle={`${activeTabLabel} resource for this module`}
-                              onPreview={setPreviewDocument}
-                              isBookmarked={bookmarkedDocumentIds.has(document.id)}
-                              isBookmarkPending={bookmarkPendingId === document.id}
-                              onToggleBookmark={handleToggleBookmark}
-                            />
-                          ))}
-                        </div>
+                        {activeTab === 'pyq' ? (
+                          <div className="space-y-5">
+                            {groupDocumentsByYear(module.documents).map((yearGroup) => (
+                              <div key={yearGroup.yearLabel} className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                                <h5 className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-200">
+                                  {yearGroup.yearLabel}
+                                </h5>
+                                <div className="mt-4 grid gap-4">
+                                  {yearGroup.documents.map((document) => (
+                                    <ResourceCard
+                                      key={document.id}
+                                      document={document}
+                                      subtitle="Previous year question paper"
+                                      onPreview={setPreviewDocument}
+                                      isBookmarked={bookmarkedDocumentIds.has(document.id)}
+                                      isBookmarkPending={bookmarkPendingId === document.id}
+                                      onToggleBookmark={handleToggleBookmark}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="grid gap-4">
+                            {module.documents.map((document) => (
+                              <ResourceCard
+                                key={document.id}
+                                document={document}
+                                subtitle={`${activeTabLabel} resource for this module`}
+                                onPreview={setPreviewDocument}
+                                isBookmarked={bookmarkedDocumentIds.has(document.id)}
+                                isBookmarkPending={bookmarkPendingId === document.id}
+                                onToggleBookmark={handleToggleBookmark}
+                              />
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))}
 
@@ -699,19 +691,44 @@ export default function SubjectPage({ params }: SubjectPageProps) {
                           </p>
                         </div>
 
-                        <div className="grid gap-4">
-                          {uncategorizedDocuments.map((document) => (
-                            <ResourceCard
-                              key={document.id}
-                              document={document}
-                              subtitle="General subject resource"
-                              onPreview={setPreviewDocument}
-                              isBookmarked={bookmarkedDocumentIds.has(document.id)}
-                              isBookmarkPending={bookmarkPendingId === document.id}
-                              onToggleBookmark={handleToggleBookmark}
-                            />
-                          ))}
-                        </div>
+                        {activeTab === 'pyq' ? (
+                          <div className="space-y-5">
+                            {groupDocumentsByYear(uncategorizedDocuments).map((yearGroup) => (
+                              <div key={yearGroup.yearLabel} className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                                <h5 className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-200">
+                                  {yearGroup.yearLabel}
+                                </h5>
+                                <div className="mt-4 grid gap-4">
+                                  {yearGroup.documents.map((document) => (
+                                    <ResourceCard
+                                      key={document.id}
+                                      document={document}
+                                      subtitle="Previous year question paper"
+                                      onPreview={setPreviewDocument}
+                                      isBookmarked={bookmarkedDocumentIds.has(document.id)}
+                                      isBookmarkPending={bookmarkPendingId === document.id}
+                                      onToggleBookmark={handleToggleBookmark}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="grid gap-4">
+                            {uncategorizedDocuments.map((document) => (
+                              <ResourceCard
+                                key={document.id}
+                                document={document}
+                                subtitle="General subject resource"
+                                onPreview={setPreviewDocument}
+                                isBookmarked={bookmarkedDocumentIds.has(document.id)}
+                                isBookmarkPending={bookmarkPendingId === document.id}
+                                onToggleBookmark={handleToggleBookmark}
+                              />
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ) : null}
                   </div>
@@ -724,9 +741,9 @@ export default function SubjectPage({ params }: SubjectPageProps) {
 
       {previewDocument ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-2xl shadow-slate-950/40">
+          <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 shadow-2xl shadow-slate-950/40">
             <div className="flex items-start justify-between gap-4">
-              <div>
+              <div className="p-6 pb-4">
                 <span className="rounded-full border border-slate-700 px-3 py-1 text-xs uppercase tracking-[0.2em] text-slate-300">
                   {previewDocument.type}
                 </span>
@@ -741,7 +758,7 @@ export default function SubjectPage({ params }: SubjectPageProps) {
               <button
                 type="button"
                 onClick={() => setPreviewDocument(null)}
-                className="rounded-full border border-slate-700 p-2 text-slate-400 transition hover:border-slate-500 hover:text-white"
+                className="m-6 rounded-full border border-slate-700 p-2 text-slate-400 transition hover:border-slate-500 hover:text-white"
                 title="Close preview"
               >
                 <X className="h-4 w-4" />
@@ -749,25 +766,29 @@ export default function SubjectPage({ params }: SubjectPageProps) {
             </div>
 
             {previewDocument.file_url ? (
-              <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Attached file</p>
-                <div className="mt-3 flex flex-wrap items-center gap-3">
-                  <span className="rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-xs text-slate-300">
+              <div className="mx-6 mb-5 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-4 py-3">
+                  <p className="inline-flex items-center gap-2 text-sm text-slate-300">
+                    <FileText className="h-4 w-4 text-brand-300" />
                     {getFileLabel(previewDocument.file_url)}
-                  </span>
-                  <a
-                    href={previewDocument.file_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex text-sm font-medium text-brand-300 transition hover:text-brand-200"
-                  >
-                    Open or download file
-                  </a>
+                  </p>
+                  <p className="text-xs text-slate-500">Viewing inside VTU SmartPrep</p>
                 </div>
+                {getEmbeddedFileUrl(previewDocument.file_url) ? (
+                  <iframe
+                    src={getEmbeddedFileUrl(previewDocument.file_url) ?? undefined}
+                    title={previewDocument.title}
+                    className="h-[60vh] w-full bg-white"
+                  />
+                ) : (
+                  <div className="p-6 text-sm text-slate-400">
+                    This file could not be previewed inside the browser.
+                  </div>
+                )}
               </div>
             ) : null}
 
-            <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-950/60 p-5">
+            <div className="mx-6 mb-6 rounded-2xl border border-slate-800 bg-slate-950/60 p-5">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Content preview</p>
               {previewDocument.content ? (
                 <div className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-200">
@@ -775,29 +796,9 @@ export default function SubjectPage({ params }: SubjectPageProps) {
                 </div>
               ) : (
                 <p className="mt-4 text-sm text-slate-400">
-                  This resource does not include inline text. Use the attached file if the study material was uploaded as a PDF or external document.
+                  This resource does not include inline text yet. The attached file preview above is the main study material.
                 </p>
               )}
-            </div>
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              {previewDocument.file_url ? (
-                <a
-                  href={previewDocument.file_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-full bg-brand-500 px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-400"
-                >
-                  Open file
-                </a>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => setPreviewDocument(null)}
-                className="rounded-full border border-slate-700 px-5 py-2 text-sm text-slate-400 transition hover:text-white"
-              >
-                Close
-              </button>
             </div>
           </div>
         </div>

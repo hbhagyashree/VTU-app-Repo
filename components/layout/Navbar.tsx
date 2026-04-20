@@ -72,9 +72,8 @@ export default function Navbar() {
                 <Link href="/admin" className="rounded-full px-3 py-2 transition hover:bg-white/10 hover:text-white">Admin</Link>
               ) : (
                 <>
-                  <Link href="/dashboard" className="rounded-full px-3 py-2 transition hover:bg-white/10 hover:text-white">Dashboard</Link>
-                  <Link href="/subjects" className="rounded-full px-3 py-2 transition hover:bg-white/10 hover:text-white">Subjects</Link>
-                  <Link href="/bookmarks" className="rounded-full px-3 py-2 transition hover:bg-white/10 hover:text-white">Bookmarks</Link>
+                  <Link href="/dashboard" className="rounded-full px-3 py-2 transition hover:bg-white/10 hover:text-white">Study</Link>
+                  <Link href="/bookmarks" className="rounded-full px-3 py-2 transition hover:bg-white/10 hover:text-white">Saved</Link>
                 </>
               )}
               <button
