@@ -26,6 +26,49 @@ or set `NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET` to your preferred bucket name.
 If your base schema is already applied, run `sql/supabase-storage-setup.sql` instead of rerunning the full schema.
 That incremental file now recreates `public.is_admin()` too, so it is safe even if your first schema run stopped early.
 
+## Bulk PYQ PDF Import
+
+To keep PYQ files inside your Supabase storage instead of linking to external folders, place downloaded PDFs in this local folder structure:
+
+```text
+pyq-files/
+  cse/
+    semester-4/
+      BCS401-2023.pdf
+      BCS401-2022.pdf
+  ise/
+    semester-5/
+      BCS502-2024.pdf
+```
+
+File naming rule:
+
+```text
+<SUBJECT-CODE>-<YEAR>.pdf
+```
+
+Then run:
+
+```bash
+node scripts/import-local-pyq-pdfs.mjs
+```
+
+You can also pass a different folder:
+
+```bash
+node scripts/import-local-pyq-pdfs.mjs /path/to/your/pyq-files
+```
+
+The script matches PDFs to Supabase by department folder, semester folder, and subject code. It uploads each PDF to the `subject-resources` bucket and creates a year-wise `pyq` document for students.
+
+If existing PYQ records point to public Google Drive folders, you can try the automatic folder importer:
+
+```bash
+node scripts/import-public-drive-folder-pyqs.mjs
+```
+
+This script attempts to discover public PDF files inside the Drive folders, upload them to Supabase Storage, and create individual year-wise PYQ records. Google may block discovery or download for some folders, so the local PDF importer above is still the most reliable option.
+
 ## Auth notes
 
 - Students and admins use the same `/login` page.
