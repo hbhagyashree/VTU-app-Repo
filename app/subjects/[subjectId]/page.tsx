@@ -742,25 +742,24 @@ export default function SubjectPage({ params }: SubjectPageProps) {
       </div>
 
       {previewDocument ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm">
-          <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 shadow-2xl shadow-slate-950/40">
-            <div className="flex items-start justify-between gap-4">
-              <div className="p-6 pb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-2 backdrop-blur-sm sm:p-4">
+          <div className="flex h-[96vh] w-full max-w-[min(96vw,1500px)] flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl shadow-slate-950/40 sm:rounded-3xl">
+            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-800 bg-slate-900 px-4 py-3 sm:px-5">
+              <div className="min-w-0">
                 <span className="rounded-full border border-slate-700 px-3 py-1 text-xs uppercase tracking-[0.2em] text-slate-300">
                   {previewDocument.type}
                 </span>
-                <h3 className="mt-4 text-2xl font-semibold text-white">{previewDocument.title}</h3>
-                <p className="mt-2 text-sm text-slate-400">
-                  Added {formatDocumentDate(previewDocument.created_at)}
-                </p>
-                <p className="text-sm text-slate-400">
+                <h3 className="mt-2 line-clamp-2 text-lg font-semibold text-white sm:text-2xl">
+                  {previewDocument.title}
+                </h3>
+                <p className="mt-1 text-xs text-slate-400 sm:text-sm">
                   Updated {formatDocumentDate(previewDocument.updated_at ?? previewDocument.created_at)}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setPreviewDocument(null)}
-                className="m-6 rounded-full border border-slate-700 p-2 text-slate-400 transition hover:border-slate-500 hover:text-white"
+                className="shrink-0 rounded-full border border-slate-700 p-2 text-slate-400 transition hover:border-slate-500 hover:text-white"
                 title="Close preview"
               >
                 <X className="h-4 w-4" />
@@ -768,11 +767,11 @@ export default function SubjectPage({ params }: SubjectPageProps) {
             </div>
 
             {previewDocument.file_url ? (
-              <div className="mx-6 mb-5 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950">
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-4 py-3">
-                  <p className="inline-flex items-center gap-2 text-sm text-slate-300">
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-950">
+                <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-800 px-4 py-2">
+                  <p className="inline-flex min-w-0 items-center gap-2 text-xs text-slate-300 sm:text-sm">
                     <FileText className="h-4 w-4 text-brand-300" />
-                    {getFileLabel(previewDocument.file_url)}
+                    <span className="truncate">{getFileLabel(previewDocument.file_url)}</span>
                   </p>
                   <p className="text-xs text-slate-500">
                     {getEmbeddedFileKind(previewDocument.file_url) === 'folder'
@@ -784,7 +783,7 @@ export default function SubjectPage({ params }: SubjectPageProps) {
                   <iframe
                     src={getEmbeddedFileUrl(previewDocument.file_url) ?? undefined}
                     title={previewDocument.title}
-                    className="h-[60vh] w-full bg-white"
+                    className="min-h-0 flex-1 bg-white"
                   />
                 ) : (
                   <div className="p-6 text-sm text-slate-400">
@@ -792,20 +791,22 @@ export default function SubjectPage({ params }: SubjectPageProps) {
                   </div>
                 )}
               </div>
-            ) : null}
-
-            <div className="mx-6 mb-6 rounded-2xl border border-slate-800 bg-slate-950/60 p-5">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Content preview</p>
-              {previewDocument.content ? (
-                <div className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-200">
-                  {previewDocument.content}
+            ) : (
+              <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+                <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-5">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Content preview</p>
+                  {previewDocument.content ? (
+                    <div className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-200">
+                      {previewDocument.content}
+                    </div>
+                  ) : (
+                    <p className="mt-4 text-sm text-slate-400">
+                      This resource does not include inline text yet.
+                    </p>
+                  )}
                 </div>
-              ) : (
-                <p className="mt-4 text-sm text-slate-400">
-                  This resource does not include inline text yet. The attached file preview above is the main study material.
-                </p>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       ) : null}
