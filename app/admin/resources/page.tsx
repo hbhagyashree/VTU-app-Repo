@@ -159,6 +159,24 @@ function getDocumentTypeLead(type: SubjectDocumentType): string {
   return 'module revision notes';
 }
 
+function isSpecialModuleTitle(title: string): boolean {
+  const normalizedTitle = title.trim().toLowerCase();
+  return normalizedTitle === 'syllabus' || normalizedTitle === 'pyqs';
+}
+
+function getNextContentModuleOrder(modules: Module[]): number {
+  const contentOrders = modules
+    .filter((module) => !isSpecialModuleTitle(module.title))
+    .map((module) => module.order)
+    .filter((order) => order >= 1);
+
+  if (contentOrders.length === 0) {
+    return 1;
+  }
+
+  return Math.max(...contentOrders) + 1;
+}
+
 function getActivityActor(item: Pick<AdminActivityLog, 'metadata'>): {
   actorName?: string;
   actorEmail?: string;
@@ -466,6 +484,11 @@ export default function AdminResourcesPage() {
         setRecentChangeSearchQuery('');
         setSelectedRecentChange(null);
         setExpandedRecentChangeGroups([]);
+        setModuleForm({
+          title: '',
+          description: '',
+          order: getNextContentModuleOrder(mods),
+        });
         setDocumentSearchQuery('');
         setDocumentTypeFilter('all');
         setDocumentSortOrder('updated_desc');
@@ -517,8 +540,13 @@ export default function AdminResourcesPage() {
     setSuccessMessage(null);
     try {
       const { data } = await createModule({ ...moduleForm, subject_id: selectedSubjectId });
-      setModules((prev) => [...prev, data].sort((a, b) => a.order - b.order));
-      setModuleForm({ title: '', description: '', order: modules.length + 2 });
+      const refreshedResources = await getSubjectResources(selectedSubjectId);
+      setModules(refreshedResources.modules);
+      setModuleForm({
+        title: '',
+        description: '',
+        order: getNextContentModuleOrder(refreshedResources.modules),
+      });
       setShowModuleForm(false);
       setSuccessMessage(`Module "${data.title}" created successfully.`);
       void addRecentChange('Module created', data.title, { module_id: data.id });
@@ -620,7 +648,12 @@ export default function AdminResourcesPage() {
         order: moduleEditForm.order,
       };
       const { data } = await updateModule(moduleId, updates);
-      setModules((prev) => prev.map((module) => (module.id === moduleId ? data : module)).sort((a, b) => a.order - b.order));
+      const refreshedResources = await getSubjectResources(selectedSubjectId);
+      setModules(refreshedResources.modules);
+      setModuleForm((prev) => ({
+        ...prev,
+        order: getNextContentModuleOrder(refreshedResources.modules),
+      }));
       setEditingModuleId(null);
       setSuccessMessage(`Module "${data.title}" updated successfully.`);
       void addRecentChange('Module updated', data.title, { module_id: data.id });
@@ -1749,7 +1782,13 @@ export default function AdminResourcesPage() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => setShowModuleForm((v) => !v)}
+                      onClick={() => {
+                        setModuleForm((prev) => ({
+                          ...prev,
+                          order: getNextContentModuleOrder(modules),
+                        }));
+                        setShowModuleForm((value) => !value);
+                      }}
                       className="flex items-center gap-1.5 rounded-full bg-brand-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-400"
                     >
                       <Plus className="h-4 w-4" />

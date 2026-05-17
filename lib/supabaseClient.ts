@@ -69,6 +69,7 @@ export const db = {
   modules: {
     getBySubject: (subjectId: string) =>
       requireSupabase().from('modules').select('*').eq('subject_id', subjectId).order('order'),
+    getById: (id: string) => requireSupabase().from('modules').select('*').eq('id', id).single(),
     create: (data: Record<string, unknown>) =>
       requireSupabase().from('modules').insert(data).select('*').single(),
     update: (id: string, data: Record<string, unknown>) =>

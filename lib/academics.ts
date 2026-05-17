@@ -109,6 +109,97 @@ function cloneDocuments(items: Document[]): Document[] {
   return items.map((item) => ({ ...item }));
 }
 
+async function moveModulesDownFromOrder(
+  subjectId: string,
+  startingOrder: number
+): Promise<void> {
+  const db = await loadDb();
+  const { data: moduleData, error } = await db.modules.getBySubject(subjectId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const modulesToShift = (moduleData ?? [])
+    .filter((item) => item.order >= startingOrder)
+    .sort((left, right) => right.order - left.order);
+
+  for (const item of modulesToShift) {
+    const { error: updateError } = await db.modules.update(item.id, {
+      order: item.order + 1,
+    });
+
+    if (updateError) {
+      throw new Error(updateError.message);
+    }
+  }
+}
+
+async function reorderExistingModulesForUpdate(
+  moduleId: string,
+  subjectId: string,
+  nextOrder: number
+): Promise<void> {
+  const db = await loadDb();
+  const { data: moduleData, error } = await db.modules.getBySubject(subjectId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const modules = moduleData ?? [];
+  const currentModule = modules.find((item) => item.id === moduleId);
+
+  if (!currentModule) {
+    throw new Error('Module not found');
+  }
+
+  if (currentModule.order === nextOrder) {
+    return;
+  }
+
+  const temporaryOrder = -Math.max(Date.now(), currentModule.order, nextOrder);
+  const { error: parkError } = await db.modules.update(moduleId, { order: temporaryOrder });
+
+  if (parkError) {
+    throw new Error(parkError.message);
+  }
+
+  if (nextOrder < currentModule.order) {
+    const modulesToShift = modules
+      .filter((item) => item.id !== moduleId)
+      .filter((item) => item.order >= nextOrder && item.order < currentModule.order)
+      .sort((left, right) => right.order - left.order);
+
+    for (const item of modulesToShift) {
+      const { error: updateError } = await db.modules.update(item.id, {
+        order: item.order + 1,
+      });
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+    }
+
+    return;
+  }
+
+  const modulesToShift = modules
+    .filter((item) => item.id !== moduleId)
+    .filter((item) => item.order <= nextOrder && item.order > currentModule.order)
+    .sort((left, right) => left.order - right.order);
+
+  for (const item of modulesToShift) {
+    const { error: updateError } = await db.modules.update(item.id, {
+      order: item.order - 1,
+    });
+
+    if (updateError) {
+      throw new Error(updateError.message);
+    }
+  }
+}
+
 async function loadDb() {
   const { db, supabase } = await import('@/lib/supabaseClient');
 
@@ -345,7 +436,14 @@ export async function createModule(
 ): Promise<{ data: Module; fallback: boolean }> {
   try {
     const db = await loadDb();
-    const { data, error } = await db.modules.create(input as unknown as Record<string, unknown>);
+    const requestedOrder = Math.max(1, input.order);
+
+    await moveModulesDownFromOrder(input.subject_id, requestedOrder);
+
+    const { data, error } = await db.modules.create({
+      ...input,
+      order: requestedOrder,
+    } as unknown as Record<string, unknown>);
     if (error || !data) throw new Error(error?.message ?? 'Failed to create module');
     return { data: data as unknown as Module, fallback: false };
   } catch (error) {
@@ -353,12 +451,23 @@ export async function createModule(
     if (!shouldUseMockWrites()) {
       throw error instanceof Error ? error : new Error('Failed to create module');
     }
+    const requestedOrder = Math.max(1, input.order);
+    const modulesForSubject = mockModules
+      .filter((item) => item.subject_id === input.subject_id)
+      .sort((left, right) => right.order - left.order);
+
+    for (const item of modulesForSubject) {
+      if (item.order >= requestedOrder) {
+        item.order += 1;
+      }
+    }
+
     const newModule: Module = {
       id: Date.now().toString(),
       subject_id: input.subject_id,
       title: input.title,
       description: input.description,
-      order: input.order,
+      order: requestedOrder,
       created_at: new Date().toISOString(),
     };
     mockModules.push(newModule);
@@ -372,7 +481,21 @@ export async function updateModule(
 ): Promise<{ data: Module; fallback: boolean }> {
   try {
     const db = await loadDb();
-    const { data, error } = await db.modules.update(id, input as unknown as Record<string, unknown>);
+    const { data: currentModule, error: currentModuleError } = await db.modules.getById(id);
+
+    if (currentModuleError || !currentModule) {
+      throw new Error(currentModuleError?.message ?? 'Module not found');
+    }
+
+    const nextOrder =
+      typeof input.order === 'number' ? Math.max(1, input.order) : currentModule.order;
+
+    await reorderExistingModulesForUpdate(id, currentModule.subject_id, nextOrder);
+
+    const { data, error } = await db.modules.update(id, {
+      ...input,
+      order: nextOrder,
+    } as unknown as Record<string, unknown>);
     if (error || !data) throw new Error(error?.message ?? 'Module not found');
     return { data: data as unknown as Module, fallback: false };
   } catch (error) {
@@ -382,7 +505,37 @@ export async function updateModule(
     }
     const index = mockModules.findIndex((m) => m.id === id);
     if (index === -1) throw new Error('Module not found');
-    mockModules[index] = { ...mockModules[index], ...input };
+    const currentModule = mockModules[index];
+    const nextOrder =
+      typeof input.order === 'number' ? Math.max(1, input.order) : currentModule.order;
+
+    if (nextOrder !== currentModule.order) {
+      if (nextOrder < currentModule.order) {
+        for (const item of mockModules) {
+          if (
+            item.subject_id === currentModule.subject_id &&
+            item.id !== currentModule.id &&
+            item.order >= nextOrder &&
+            item.order < currentModule.order
+          ) {
+            item.order += 1;
+          }
+        }
+      } else {
+        for (const item of mockModules) {
+          if (
+            item.subject_id === currentModule.subject_id &&
+            item.id !== currentModule.id &&
+            item.order > currentModule.order &&
+            item.order <= nextOrder
+          ) {
+            item.order -= 1;
+          }
+        }
+      }
+    }
+
+    mockModules[index] = { ...mockModules[index], ...input, order: nextOrder };
     return { data: { ...mockModules[index] }, fallback: true };
   }
 }
