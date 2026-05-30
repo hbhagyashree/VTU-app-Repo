@@ -2,6 +2,7 @@
 
 import { getCurrentUser, logout, subscribeToAuthChanges } from '@/lib/auth';
 import type { AuthUser } from '@/types';
+import { CalendarDays } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -56,6 +57,16 @@ export default function Navbar() {
 
         <div className="flex max-w-full flex-wrap items-center gap-2 text-sm text-slate-300 sm:justify-end sm:gap-3">
           <Link href="/" className="rounded-full px-3 py-2 transition hover:bg-white/10 hover:text-white">Home</Link>
+
+          <a
+            href="https://topmate.io/bhagyashree_hosmani/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-full border border-ocean-400/40 bg-ocean-500/10 px-4 py-2 font-semibold text-ocean-100 transition hover:border-ocean-300 hover:bg-ocean-500/20"
+          >
+            <CalendarDays className="h-4 w-4" />
+            Book 1:1
+          </a>
 
           {user === undefined ? null : user === null ? (
             <>
