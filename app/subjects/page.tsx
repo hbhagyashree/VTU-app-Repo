@@ -3,6 +3,7 @@
 import AppShell from '@/components/layout/AppShell';
 import SubjectCard from '@/components/student/SubjectCard';
 import { getAllSemesters, getDepartments } from '@/lib/academics';
+import Link from 'next/link';
 import { getProtectedRouteState } from '@/lib/auth';
 import {
   filterSubjectsByDepartmentAndSemester,
@@ -174,6 +175,23 @@ export default function SubjectsPage() {
             />
           </label>
         </div>
+
+        {selectedSemesterNumber === '6' && (
+          <div className="flex flex-col gap-3 rounded-3xl border border-ocean-400/30 bg-ocean-500/5 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-ocean-200">Have a 6th Sem Open Elective?</p>
+              <p className="mt-1 text-sm text-slate-400">
+                Open elective subjects are kept in a shared section — not inside individual department pages.
+              </p>
+            </div>
+            <Link
+              href="/vtu/open-electives/6th-sem"
+              className="shrink-0 inline-flex items-center gap-2 rounded-full border border-ocean-400/40 bg-ocean-500/10 px-4 py-2 text-sm font-semibold text-ocean-100 transition hover:border-ocean-300 hover:bg-ocean-500/20"
+            >
+              View 6th Sem Open Electives →
+            </Link>
+          </div>
+        )}
 
         <section className="grid gap-6">
           {isLoading ? (
