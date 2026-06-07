@@ -7,6 +7,11 @@ export interface OpenElectiveSubject {
   semesterNumber: 5 | 6 | 7;
   scheme: string;
   category: 'Open Elective';
+  /**
+   * Supabase subject UUID. Set this after creating the subject in the admin panel.
+   * Once set, the detail page will fetch modules, notes, PYQs, etc. from Supabase.
+   */
+  supabaseSubjectId?: string;
 }
 
 export const openElectives5thSem: OpenElectiveSubject[] = [];
