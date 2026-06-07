@@ -195,6 +195,20 @@ export async function getSubjectById(id: string): Promise<Subject | null> {
   return data;
 }
 
+export async function getSubjectByCode(code: string): Promise<Subject | null> {
+  try {
+    const supabase = await getSupabase();
+    if (supabase) {
+      const { data, error } = await supabase.from('subjects').select('*').eq('code', code).single();
+      if (error || !data) return null;
+      return data;
+    }
+  } catch {
+    // Subject not found in Supabase
+  }
+  return null;
+}
+
 export async function createSubject(data: CreateSubjectInput): Promise<Subject> {
   const normalized = normalizeSubjectInput(data);
   ensureRequiredFields(normalized);

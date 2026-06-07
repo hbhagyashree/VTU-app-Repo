@@ -3,17 +3,17 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import {
-  ArrowLeft,
-  BookOpen,
-  Eye,
-  FileText,
-  X,
-} from 'lucide-react';
+import { ArrowLeft, Eye, FileText, X } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
 import { openElectives6thSem } from '@/data/openElectives';
+import { getSubjectByCode } from '@/lib/subjects';
 import { getSubjectResources } from '@/lib/academics';
-import { getEmbeddedFileKind, getEmbeddedFileUrl, getFileLabel, getModuleDisplayTitle } from '@/lib/resourceDisplay';
+import {
+  getEmbeddedFileKind,
+  getEmbeddedFileUrl,
+  getFileLabel,
+  getModuleDisplayTitle,
+} from '@/lib/resourceDisplay';
 import type { Document, Module } from '@/types';
 
 interface Props {
@@ -75,31 +75,43 @@ export default function OpenElectiveSubjectPage({ params }: Props) {
 
   const [modules, setModules] = useState<Module[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [notInSupabase, setNotInSupabase] = useState(false);
   const [previewDocument, setPreviewDocument] = useState<Document | null>(null);
 
   useEffect(() => {
-    if (!subject?.supabaseSubjectId) return;
+    if (!subject) return;
 
     let active = true;
     setIsLoading(true);
+    setNotInSupabase(false);
 
-    getSubjectResources(subject.supabaseSubjectId)
-      .then((result) => {
-        if (!active) return;
-        setModules(result.modules);
-        setDocuments(result.documents);
-      })
-      .finally(() => {
-        if (active) setIsLoading(false);
-      });
+    async function load() {
+      // Prefer explicit supabaseSubjectId; fall back to code lookup
+      const subjectId =
+        subject!.supabaseSubjectId ?? (await getSubjectByCode(subject!.code))?.id;
 
+      if (!active) return;
+
+      if (!subjectId) {
+        setNotInSupabase(true);
+        setIsLoading(false);
+        return;
+      }
+
+      const result = await getSubjectResources(subjectId);
+      if (!active) return;
+
+      setModules(result.modules);
+      setDocuments(result.documents);
+      setIsLoading(false);
+    }
+
+    load();
     return () => { active = false; };
-  }, [subject?.supabaseSubjectId]);
+  }, [subject?.code, subject?.supabaseSubjectId]);
 
   if (!subject) notFound();
-
-  const hasSupabaseId = Boolean(subject.supabaseSubjectId);
 
   return (
     <AppShell>
@@ -151,41 +163,23 @@ export default function OpenElectiveSubjectPage({ params }: Props) {
           </div>
         </header>
 
-        {/* Resources section */}
-        {!hasSupabaseId ? (
-          /* Not yet wired to Supabase — show setup instructions for admin */
-          <div className="rounded-3xl border border-dashed border-white/10 bg-slate-900/50 p-8">
-            <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-ocean-400/10">
-                <BookOpen className="h-5 w-5 text-ocean-300" aria-hidden="true" />
-              </div>
-              <h2 className="text-xl font-semibold text-white">Study Resources</h2>
-            </div>
-
-            <p className="mt-4 text-slate-300">
-              Resources for this subject are coming soon.
-            </p>
-
-            <div className="mt-6 rounded-2xl border border-ocean-400/20 bg-ocean-500/5 p-5 text-sm text-slate-300 leading-7">
-              <p className="font-semibold text-ocean-200 mb-3">Admin: How to connect this subject to Supabase</p>
-              <ol className="list-decimal list-inside space-y-2 text-slate-400">
-                <li>Go to <Link href="/admin/departments" className="text-ocean-300 hover:underline">/admin/departments</Link> → create department named <strong className="text-white">Open Electives</strong> (slug: <code className="text-brand-300">open-electives</code>)</li>
-                <li>Go to <Link href="/admin/subjects" className="text-ocean-300 hover:underline">/admin/subjects</Link> → create subject with code <strong className="text-white">{subject.code}</strong> under that department</li>
-                <li>Copy the Supabase subject UUID from the URL or admin panel</li>
-                <li>Open <code className="text-brand-300">data/openElectives.ts</code> → find this subject entry → add <code className="text-brand-300">supabaseSubjectId: &apos;paste-uuid-here&apos;</code></li>
-                <li>Go to <Link href="/admin/resources" className="text-ocean-300 hover:underline">/admin/resources</Link> → select this subject → add modules and upload PDFs/notes/PYQs</li>
-              </ol>
-            </div>
-          </div>
-        ) : isLoading ? (
+        {/* Resources */}
+        {isLoading ? (
           <div className="flex items-center justify-center py-16">
             <p className="text-slate-400">Loading study resources...</p>
           </div>
+        ) : notInSupabase ? (
+          <div className="flex flex-col items-center gap-4 rounded-3xl border border-dashed border-white/10 bg-slate-900/50 py-16 text-center">
+            <p className="font-semibold text-slate-300">Resources coming soon</p>
+            <p className="max-w-md text-sm text-slate-400">
+              Study materials for this subject are being prepared. Check back later.
+            </p>
+          </div>
         ) : modules.length === 0 && documents.length === 0 ? (
           <div className="flex flex-col items-center gap-3 rounded-3xl border border-dashed border-white/10 bg-slate-900/50 py-16 text-center">
-            <p className="text-slate-300 font-semibold">No resources published yet</p>
+            <p className="font-semibold text-slate-300">No resources published yet</p>
             <p className="max-w-md text-sm text-slate-400">
-              Go to <Link href="/admin/resources" className="text-ocean-300 hover:underline">/admin/resources</Link> and add modules + documents for this subject.
+              Resources for this subject have not been published yet. Check back soon.
             </p>
           </div>
         ) : (
@@ -194,7 +188,11 @@ export default function OpenElectiveSubjectPage({ params }: Props) {
               const modDocs = documents.filter((d) => d.module_id === mod.id);
               if (modDocs.length === 0) return null;
               return (
-                <section key={mod.id} className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
+                <section
+                  key={mod.id}
+                  id={`module-${mod.order}`}
+                  className="scroll-mt-24 rounded-3xl border border-white/10 bg-slate-900/70 p-6"
+                >
                   <h2 className="text-xl font-semibold text-white">{getModuleDisplayTitle(mod)}</h2>
                   {mod.description && (
                     <p className="mt-2 text-sm text-slate-400">{mod.description}</p>
@@ -208,7 +206,6 @@ export default function OpenElectiveSubjectPage({ params }: Props) {
               );
             })}
 
-            {/* Documents not linked to any module */}
             {(() => {
               const unlinked = documents.filter(
                 (d) => !modules.some((m) => m.id === d.module_id)
@@ -229,7 +226,7 @@ export default function OpenElectiveSubjectPage({ params }: Props) {
         )}
       </div>
 
-      {/* Preview modal */}
+      {/* PDF preview modal */}
       {previewDocument && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-2 backdrop-blur-sm sm:p-4">
           <div className="flex h-[96vh] w-full max-w-[min(96vw,1400px)] flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl sm:rounded-3xl">
